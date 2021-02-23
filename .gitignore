@@ -2,3 +2,4 @@ target/
 .idea/
 bitwig.properties
 *.iml
+dependency-reduced-pom.xml
