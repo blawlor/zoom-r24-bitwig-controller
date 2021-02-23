@@ -59,13 +59,13 @@ public class ZoomR24ControllerExtensionDefinition extends ControllerExtensionDef
    @Override
    public int getNumMidiInPorts()
    {
-      return 1;
+      return 0;
    }
 
    @Override
    public int getNumMidiOutPorts()
    {
-      return 1;
+      return 0;
    }
 
    @Override

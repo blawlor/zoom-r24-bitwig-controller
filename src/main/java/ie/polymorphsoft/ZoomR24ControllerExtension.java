@@ -4,6 +4,7 @@ import com.bitwig.extension.api.util.midi.ShortMidiMessage;
 import com.bitwig.extension.callback.ShortMidiMessageReceivedCallback;
 import com.bitwig.extension.controller.api.*;
 import com.bitwig.extension.controller.ControllerExtension;
+import ie.polymorphsoft.bitwig.ExtensionProxy;
 
 public class ZoomR24ControllerExtension extends ControllerExtension
 {
@@ -22,11 +23,13 @@ public class ZoomR24ControllerExtension extends ControllerExtension
    private TrackBank trackBank;
    private MasterTrack masterTrack;
    private UserControlBank userControls;
+   private ExtensionProxy extensionProxy;
 
    @Override
    public void init()
    {
       final ControllerHost host = getHost();
+      extensionProxy = new ExtensionProxy(host);
       host.println("Entering init method");
       application = host.createApplication();
       transport = host.createTransport();
@@ -34,8 +37,8 @@ public class ZoomR24ControllerExtension extends ControllerExtension
       trackBank = host.createTrackBank(512,512,512);
       masterTrack = host.createMasterTrack(512);
 
-      host.getMidiInPort(0).setMidiCallback((ShortMidiMessageReceivedCallback) msg -> onMidi0(msg));
-      host.getMidiInPort(0).setSysexCallback((String data) -> onSysex0(data));
+//      host.getMidiInPort(0).setMidiCallback((ShortMidiMessageReceivedCallback) msg -> onMidi0(msg));
+//      host.getMidiInPort(0).setSysexCallback((String data) -> onSysex0(data));
       userControls = host.createUserControls((HIGHEST_CC - LOWEST_CC + 1)*16);
 
       // TODO: Perform your driver initialization here.
