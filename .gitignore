@@ -1,0 +1,4 @@
+target/
+.idea/
+bitwig.properties
+*.iml
