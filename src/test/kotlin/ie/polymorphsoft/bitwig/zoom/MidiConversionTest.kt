@@ -59,4 +59,36 @@ class MidiConversionTest {
         event = ShortMidiMessage(176, 60, 0).inputEvent()
         assertNull(event)
     }
+
+    @Test
+    internal fun shift() {
+        var event = ShortMidiMessage(144, 54, 127).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.F1, it.input)
+            assertEquals(InputActions.ON, it.action)
+        }
+        event = ShortMidiMessage(144, 54, 0).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.F1, it.input)
+            assertEquals(InputActions.OFF, it.action)
+        }
+    }
+
+    @Test
+    internal fun ctrl() {
+        var event = ShortMidiMessage(144, 55, 127).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.F2, it.input)
+            assertEquals(InputActions.ON, it.action)
+        }
+        event = ShortMidiMessage(144, 55, 0).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.F2, it.input)
+            assertEquals(InputActions.OFF, it.action)
+        }
+    }
 }

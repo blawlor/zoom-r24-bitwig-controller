@@ -54,6 +54,7 @@ fun ShortMidiMessage.inputEvent(): InputEvent? {
                 BV(47, 0) -> InputEvent(Inputs.BANK_UP, InputActions.OFF)
 
                 //F1 - F5
+                BV(54,127) -> InputEvent(Inputs.F1, InputActions.ON)
                 BV(54,0) -> InputEvent(Inputs.F1, InputActions.OFF)
                 BV(55, 127) -> InputEvent(Inputs.F2, InputActions.ON)
                 BV(55, 0) -> InputEvent(Inputs.F2, InputActions.OFF)

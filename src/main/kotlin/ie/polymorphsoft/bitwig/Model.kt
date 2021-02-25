@@ -28,6 +28,10 @@ object Stop:BitwigEvent()
 object Record:BitwigEvent()
 object FastForward: BitwigEvent()
 object Rewind: BitwigEvent()
+object ShiftOn: BitwigEvent()
+object ShiftOff: BitwigEvent()
+object CtrlOn: BitwigEvent()
+object CtrlOff: BitwigEvent()
 class Fader(val track: Int, val level: Int): BitwigEvent()
 class MasterFader(val level: Int): BitwigEvent()
 
@@ -58,13 +62,13 @@ fun update(model: Model, inputEvent: InputEvent): Pair<Model, BitwigEvent?> {
     return when (inputEvent.input){
         Inputs.F1 ->
             when (inputEvent.action) {
-                InputActions.ON -> return Pair(model.shiftOn(), null)
-                InputActions.OFF -> return Pair(model.shiftOff(), null)
+                InputActions.ON -> return Pair(model.shiftOn(), ShiftOn)
+                InputActions.OFF -> return Pair(model.shiftOff(), ShiftOff)
             }
         Inputs.F2 ->
             when(inputEvent.action) {
-                InputActions.ON -> return Pair(model.ctrlOn(), null)
-                InputActions.OFF -> return Pair(model.ctrlOff(), null)
+                InputActions.ON -> return Pair(model.ctrlOn(), CtrlOn)
+                InputActions.OFF -> return Pair(model.ctrlOff(), CtrlOff)
             }
         Inputs.F3 -> return Pair(model, null)
         Inputs.F4 -> return Pair(model, null)

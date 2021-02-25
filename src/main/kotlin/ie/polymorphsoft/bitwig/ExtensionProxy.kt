@@ -55,17 +55,25 @@ class ExtensionProxy(val host: ControllerHost) {
                 is FastForward -> transport.fastForward()
                 is Rewind -> transport.rewind()
                 is Fader -> {
-                    host.println("Getting track ${it.track}")
                     val track = trackBank.getItemAt(it.track)
                     if (track.exists().get()) {
-                        val volume = track.volume();
-                        volume.set(it.level, 128);
-                        host.println("Track " + track + " - Volume " + it.level);
+                        if (model.shift){
+                            val pan = track.pan();
+                            pan.set(it.level, 128);
+                        } else {
+                            val volume = track.volume();
+                            volume.set(it.level, 128);
+                        }
                     } else {
                         host.showPopupNotification("Track " + track + " does not exist")
                         host.println("Track " + track + " does not exist")
                     }
                 }
+                ShiftOn -> host.println("Shift On")
+                ShiftOff -> host.println("Shift Off")
+                CtrlOn -> host.println("Ctrl On")
+                CtrlOff -> host.println("Ctrl Off")
+
             }
         }
     }

@@ -23,6 +23,24 @@ class ModelTest {
     }
 
     @Test
+    internal fun shiftAndCtrl(){
+        val model = initModel()
+        val (newModel, event1) = update(model, InputEvent(Inputs.F1, InputActions.ON))
+        assertTrue(newModel.shift)
+        assertEquals(ShiftOn, event1)
+        val (newModel2, event2) = update(model, InputEvent(Inputs.F1, InputActions.OFF))
+        assertFalse(newModel2.shift)
+        assertEquals(ShiftOff, event2)
+        val (newModel3, event3) = update(model, InputEvent(Inputs.F2, InputActions.ON))
+        assertTrue(newModel3.ctrl)
+        assertEquals(CtrlOn, event3)
+        val (newModel4, event4) = update(model, InputEvent(Inputs.F2, InputActions.OFF))
+        assertFalse(newModel4.ctrl)
+        assertEquals(CtrlOff, event4)
+
+    }
+
+    @Test
     internal fun transport() {
         val model = initModel()
         val (_, bitwigEvent) = update(model, InputEvent(Inputs.PLAY, InputActions.ON))
