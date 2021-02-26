@@ -14,6 +14,8 @@ to produce new versions of the Model and optionally outgoing BitwigEvents (typic
 The update function interprets the incoming events into model changes and events. Note that there is no
 knowledge of midi or the Bitwig API encoded in the model or the update function.
  */
+val BANK_SIZE = 8
+val NO_OF_BANKS = 8
 
 enum class BitwigMode {
     ARRANGE, CLIP, MIX
@@ -32,15 +34,34 @@ object ShiftOn: BitwigEvent()
 object ShiftOff: BitwigEvent()
 object CtrlOn: BitwigEvent()
 object CtrlOff: BitwigEvent()
+object BankUp: BitwigEvent()
+object BankDown: BitwigEvent()
 class Fader(val track: Int, val level: Int): BitwigEvent()
 class MasterFader(val level: Int): BitwigEvent()
+class Mute(val track: Int, val on: Boolean = true): BitwigEvent()
+class Solo(val track: Int, val on: Boolean = true): BitwigEvent()
+class Rec(val track: Int, val on: Boolean = true): BitwigEvent()
 
+
+data class TrackState(val state: Array<Boolean> ) {
+    fun isOn(index: Int) = state[index]
+    private fun set(index: Int, value: Boolean) = run {
+        val newArray = state.copyOf()
+        newArray[index] = value
+        this.copy(state = newArray)
+    }
+    fun on(index: Int) = set(index, true)
+    fun off(index: Int) = set(index, false)
+    fun toggle(index: Int) = set(index, !state[index])
+}
 
 // The internal state of the extension is modeled here.
 data class Model(val mode: BitwigMode,
                  val shift: Boolean = false,
                  val ctrl: Boolean = false,
-                 val currentBank: Int = 1) {
+                 val currentBank: Int = 0,
+                 val muteState:  TrackState = initMute(),
+                 val soloState: TrackState = initSolo() ) {
     fun toggleMode(): Model {
         return when (mode) {
             BitwigMode.ARRANGE -> this.copy(mode = BitwigMode.CLIP)
@@ -57,6 +78,8 @@ data class Model(val mode: BitwigMode,
 }
 
 fun initModel() = Model(BitwigMode.ARRANGE)
+fun initMute() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
+fun initSolo() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
 
 fun update(model: Model, inputEvent: InputEvent): Pair<Model, BitwigEvent?> {
     return when (inputEvent.input){
@@ -123,9 +146,24 @@ fun update(model: Model, inputEvent: InputEvent): Pair<Model, BitwigEvent?> {
         Inputs.DOWN -> Pair(model, null)
         Inputs.LEFT -> Pair(model, null)
         Inputs.RIGHT -> Pair(model, null)
-        Inputs.BANK_DOWN -> Pair(model, null)
-        Inputs.BANK_UP -> Pair(model, null)
-        Inputs.PMR1 -> Pair(model, null)
+        Inputs.BANK_DOWN -> {
+            if (model.currentBank > 0) {
+                Pair(model.copy(currentBank = model.currentBank - 1), BankDown)
+            } else {
+                Pair(model, null)
+            }
+        }
+        Inputs.BANK_UP -> Pair(model.copy(currentBank = model.currentBank+1), BankUp)
+        Inputs.PMR1 -> {
+            //Mute
+            if (!model.shift && !model.ctrl){
+                toggleMuteState(model, 0)
+            } else if(model.shift && !model.ctrl){
+                toggleSoloState(model, 0)
+            } else {
+                Pair(model, null)
+            }
+        }
         Inputs.PMR2 -> Pair(model, null)
         Inputs.PMR3 -> Pair(model, null)
         Inputs.PMR4 -> Pair(model, null)
@@ -134,6 +172,16 @@ fun update(model: Model, inputEvent: InputEvent): Pair<Model, BitwigEvent?> {
         Inputs.PMR7 -> Pair(model, null)
         Inputs.PMR8 -> Pair(model, null)
     }
+}
+
+private fun toggleMuteState(model: Model, track: Int):Pair<Model, BitwigEvent?> {
+    val newMuteState = model.muteState.toggle(track)
+    return Pair(model.copy(muteState = newMuteState), Mute(track, newMuteState.isOn(track)))
+}
+
+private fun toggleSoloState(model: Model, track: Int):Pair<Model, BitwigEvent?> {
+    val newSoloState = model.soloState.toggle(track)
+    return Pair(model.copy(soloState = newSoloState), Solo(track, newSoloState.isOn(track)))
 }
 
 private fun fader(model: Model, track: Int, action: InputActions, value: Int): Pair<Model, BitwigEvent?> =

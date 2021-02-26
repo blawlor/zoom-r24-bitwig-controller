@@ -91,4 +91,33 @@ class MidiConversionTest {
             assertEquals(InputActions.OFF, it.action)
         }
     }
+
+    @Test
+    internal fun bank(){
+        var event = ShortMidiMessage(144, 46, 127).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.BANK_DOWN, it.input)
+            assertEquals(InputActions.ON, it.action)
+        }
+        event = ShortMidiMessage(144, 46, 0).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.BANK_DOWN, it.input)
+            assertEquals(InputActions.OFF, it.action)
+        }
+        event = ShortMidiMessage(144, 47, 127).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.BANK_UP, it.input)
+            assertEquals(InputActions.ON, it.action)
+        }
+        event = ShortMidiMessage(144, 47, 0).inputEvent()
+        assertNotNull(event)
+        event?.let {
+            assertEquals(Inputs.BANK_UP, it.input)
+            assertEquals(InputActions.OFF, it.action)
+        }
+
+    }
 }

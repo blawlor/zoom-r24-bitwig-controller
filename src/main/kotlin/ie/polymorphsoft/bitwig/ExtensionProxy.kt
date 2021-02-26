@@ -7,6 +7,9 @@ import com.bitwig.extension.callback.ShortMidiMessageReceivedCallback
 import com.bitwig.extension.controller.api.*
 import ie.polymorphsoft.bitwig.zoom.inputEvent
 
+/*
+A class in Kotlin that allows us to continue using a Java class as the extension.
+ */
 class ExtensionProxy(val host: ControllerHost) {
     private var model: Model = initModel()
     private val application: Application
@@ -20,15 +23,26 @@ class ExtensionProxy(val host: ControllerHost) {
         application = host.createApplication()
         transport = host.createTransport()
         arranger = host.createArranger(0)
-        trackBank = host.createTrackBank(8, 0, 0)
+        trackBank = host.createMainTrackBank(BANK_SIZE, 0, 0)
         masterTrack = host.createMasterTrack(512)
 
-        for (trackNumber in 0 .. trackBank.sizeOfBank -1 ) {
-            val track = trackBank.getItemAt(trackNumber)
-            track.exists().markInterested()
-            track.volume().markInterested()
-            track.pan().markInterested()
+        for (bankNumber in 0..NO_OF_BANKS-1) {
+            for (trackNumber in 0..trackBank.sizeOfBank - 1) {
+                val track = trackBank.getItemAt(trackNumber)
+                track.exists().markInterested()
+                val volume = track.volume()
+                volume.markInterested()
+                volume.setIndication(true)
+                val pan = track.pan()
+                pan.markInterested()
+                pan.setIndication(true)
+                track.mute().markInterested()
+                track.solo().markInterested()
+                track.arm().markInterested()
+            }
+            trackBank.scrollPageForwards()
         }
+        trackBank.scrollPosition().set(0)
         host.getMidiInPort(0).setMidiCallback(ShortMidiMessageReceivedCallback { msg: ShortMidiMessage -> onMidi0(msg) })
         host.getMidiInPort(0).setSysexCallback { data: String -> onSysex0(data) }
         userControls = host.createUserControls((HIGHEST_CC - LOWEST_CC + 1) * 16)
@@ -43,10 +57,17 @@ class ExtensionProxy(val host: ControllerHost) {
         }
     }
 
+    /*
+    Converts the Bitwig events coming from the Model updates into Bitwig actions.
+    This is the equivalent of the Elm runtime.
+     */
     private fun fireBitwigEvent(bitwigEvent: BitwigEvent?) {
         bitwigEvent?.let{
             when (it) {
-                is SwitchToArrangeView -> host.showPopupNotification("Arrange")
+                is SwitchToArrangeView -> {
+                    host.showPopupNotification("Arrange")
+//                    application.
+                }
                 is SwitchToClipLauncherView -> host.showPopupNotification("Clip")
                 is SwitchToMixerView -> host.showPopupNotification("Mixer")
                 is Play -> transport.play()
@@ -73,6 +94,8 @@ class ExtensionProxy(val host: ControllerHost) {
                 ShiftOff -> host.println("Shift Off")
                 CtrlOn -> host.println("Ctrl On")
                 CtrlOff -> host.println("Ctrl Off")
+                BankDown -> trackBank.scrollPageBackwards()
+                BankUp -> trackBank.scrollPageForwards()
 
             }
         }

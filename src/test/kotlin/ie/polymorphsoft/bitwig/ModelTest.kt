@@ -96,4 +96,53 @@ class ModelTest {
         assertNotNull(bitwigEventM)
         assertEquals(0, (bitwigEventM as MasterFader).level)
     }
+
+    @Test
+    internal fun bank(){
+        val model = initModel()
+        assertEquals(0, model.currentBank)
+        val (newModel0, bitwigEvent0) = update(model, InputEvent(Inputs.BANK_DOWN, InputActions.ON))
+        assertNull(bitwigEvent0)
+        assertEquals(0, newModel0.currentBank)
+        val (newModel1, bitwigEvent1) = update(model, InputEvent(Inputs.BANK_UP, InputActions.ON))
+        assertNotNull(bitwigEvent1)
+        assertEquals(BankUp, bitwigEvent1)
+        assertEquals(1, newModel1.currentBank)
+        val (newModel2, bitwigEvent2) = update(newModel1, InputEvent(Inputs.BANK_UP, InputActions.ON))
+        assertNotNull(bitwigEvent2)
+        assertEquals(BankUp, bitwigEvent2)
+        assertEquals(2, newModel2.currentBank)
+        val (newModel3, bitwigEvent3) = update(newModel2, InputEvent(Inputs.BANK_UP, InputActions.ON))
+        assertNotNull(bitwigEvent3)
+        assertEquals(BankUp, bitwigEvent3)
+        assertEquals(3, newModel3.currentBank)
+        val (newModel4, bitwigEvent4) = update(newModel3, InputEvent(Inputs.BANK_DOWN, InputActions.ON))
+        assertNotNull(bitwigEvent4)
+        assertEquals(BankDown, bitwigEvent4)
+        assertEquals(2, newModel4.currentBank)
+    }
+
+    @Test
+    internal fun muteSoloRec(){
+        val model = initModel()
+        val (newModel1, bitwigEvent1) = update(model, InputEvent(Inputs.PMR1, InputActions.ON))
+        assertNotNull(bitwigEvent1)
+        assertTrue(bitwigEvent1 is Mute)
+        assertEquals(0, (bitwigEvent1 as Mute).track)
+        assertTrue((bitwigEvent1 as Mute).on)
+        assertTrue(newModel1.muteState.isOn(0))
+        val (newModel2, bitwigEvent2) = update(newModel1, InputEvent(Inputs.PMR1, InputActions.ON))
+        assertNotNull(bitwigEvent1)
+        assertTrue(bitwigEvent2 is Mute)
+        assertEquals(0, (bitwigEvent2 as Mute).track)
+        assertFalse((bitwigEvent2 as Mute).on)
+        assertFalse(newModel2.muteState.isOn(0))
+        val (newModel3, bitwigEvent3) = update(newModel2, InputEvent(Inputs.F1, InputActions.ON)) //Shift held on
+        val (newModel4, bitwigEvent4) = update(newModel3, InputEvent(Inputs.PMR1, InputActions.ON))
+        assertNotNull(bitwigEvent4)
+        assertTrue(bitwigEvent4 is Solo)
+        assertEquals(0, (bitwigEvent4 as Solo).track)
+        assertTrue((bitwigEvent4 as Solo).on)
+        assertTrue(newModel4.soloState.isOn(0))
+    }
 }
