@@ -144,5 +144,44 @@ class ModelTest {
         assertEquals(0, (bitwigEvent4 as Solo).track)
         assertTrue((bitwigEvent4 as Solo).on)
         assertTrue(newModel4.soloState.isOn(0))
+        val (newModel5, bitwigEvent5) = update(newModel4, InputEvent(Inputs.F1, InputActions.OFF)) //Shift off
+        val (newModel6, bitwigEvent6) = update(newModel5, InputEvent(Inputs.PMR1, InputActions.ON))
+        assertNotNull(bitwigEvent6)
+        assertTrue(bitwigEvent6 is Mute)
+        assertEquals(0, (bitwigEvent6 as Mute).track)
+        assertTrue((bitwigEvent6 as Mute).on)
+        assertTrue(newModel6.soloState.isOn(0))
+        val (newModel7, bitwigEvent7) = update(newModel6, InputEvent(Inputs.F2, InputActions.ON)) //Ctrl on
+        val (newModel8, bitwigEvent8) = update(newModel7, InputEvent(Inputs.PMR1, InputActions.ON))
+        assertNotNull(bitwigEvent8)
+        assertTrue(bitwigEvent8 is Rec)
+        assertEquals(0, (bitwigEvent8 as Rec).track)
+        assertTrue((bitwigEvent8 as Rec).on)
+        assertTrue(newModel8.recState.isOn(0))
+        val (newModel9, bitwigEvent9) = update(newModel8, InputEvent(Inputs.F2, InputActions.OFF)) //Ctrl off
+        val (newModel10, bitwigEvent10) = update(newModel9, InputEvent(Inputs.PMR2, InputActions.ON))
+        assertNotNull(bitwigEvent10)
+        assertTrue(bitwigEvent10 is Mute)
+        assertEquals(1, (bitwigEvent10 as Mute).track)
+        assertTrue((bitwigEvent10 as Mute).on)
+        assertTrue(newModel10.muteState.isOn(1))
+    }
+
+    @Test
+    internal fun jog(){
+        val model = initModel()
+        val (newModel1, bitwigEvent1) = update(model, InputEvent(Inputs.JogWheel, InputActions.ON))
+        assertNotNull(bitwigEvent1)
+        assertTrue(bitwigEvent1 is JogClockwise)
+        val (newModel2, bitwigEvent2) = update(newModel1, InputEvent(Inputs.JogWheel, InputActions.OFF))
+        assertNotNull(bitwigEvent2)
+        assertTrue(bitwigEvent2 is JogAntiClockwise)
+        val (newModel3, bitwigEvent3) = update(newModel1, InputEvent(Inputs.F1, InputActions.ON)) // Shift on
+        val (newModel4, bitwigEvent4) = update(newModel3, InputEvent(Inputs.JogWheel, InputActions.ON))
+        assertNotNull(bitwigEvent4)
+        assertTrue(bitwigEvent4 is ZoomIn)
+        val (newModel5, bitwigEvent5) = update(newModel4, InputEvent(Inputs.JogWheel, InputActions.OFF))
+        assertNotNull(bitwigEvent5)
+        assertTrue(bitwigEvent5 is ZoomOut)
     }
 }

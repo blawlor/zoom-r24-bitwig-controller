@@ -8,7 +8,7 @@ import com.bitwig.extension.controller.api.*
 import ie.polymorphsoft.bitwig.zoom.inputEvent
 
 /*
-A class in Kotlin that allows us to continue using a Java class as the extension.
+A class in Kotlin that allows us to continue using a Java class as the extension, but most of the real work is done here.
  */
 class ExtensionProxy(val host: ControllerHost) {
     private var model: Model = initModel()
@@ -17,14 +17,16 @@ class ExtensionProxy(val host: ControllerHost) {
     private var arranger: Arranger
     private var trackBank: TrackBank
     private var masterTrack: MasterTrack
+    private var cursorTrack: CursorTrack
     private val userControls: UserControlBank
     init {
         host.println("Proxy initialized.")
         application = host.createApplication()
         transport = host.createTransport()
         arranger = host.createArranger(0)
-        trackBank = host.createMainTrackBank(BANK_SIZE, 0, 0)
+        trackBank = host.createTrackBank(BANK_SIZE, 0, 0)
         masterTrack = host.createMasterTrack(512)
+        cursorTrack = host.createCursorTrack("R24_CURSOR_TRACK", "Cursor Track", 0,0, true)
 
         for (bankNumber in 0..NO_OF_BANKS-1) {
             for (trackNumber in 0..trackBank.sizeOfBank - 1) {
@@ -43,6 +45,9 @@ class ExtensionProxy(val host: ControllerHost) {
             trackBank.scrollPageForwards()
         }
         trackBank.scrollPosition().set(0)
+        trackBank.followCursorTrack(cursorTrack)
+        //TODO Clicking a track (i.e. change the cursor) in BWS can cause the page to change. So we will need to listen for
+        //track page changes in order to update the model.
         host.getMidiInPort(0).setMidiCallback(ShortMidiMessageReceivedCallback { msg: ShortMidiMessage -> onMidi0(msg) })
         host.getMidiInPort(0).setSysexCallback { data: String -> onSysex0(data) }
         userControls = host.createUserControls((HIGHEST_CC - LOWEST_CC + 1) * 16)
@@ -86,7 +91,7 @@ class ExtensionProxy(val host: ControllerHost) {
                             volume.set(it.level, 128);
                         }
                     } else {
-                        host.showPopupNotification("Track " + track + " does not exist")
+                        host.showPopupNotification("Track does not exist")
                         host.println("Track " + track + " does not exist")
                     }
                 }
@@ -96,12 +101,17 @@ class ExtensionProxy(val host: ControllerHost) {
                 CtrlOff -> host.println("Ctrl Off")
                 BankDown -> trackBank.scrollPageBackwards()
                 BankUp -> trackBank.scrollPageForwards()
-
+                JogClockwise -> transport.incPosition(1.0, true)
+                JogAntiClockwise -> transport.incPosition(-1.0, true)
+                ZoomIn -> application.zoomIn()
+                ZoomOut -> application.zoomOut()
+                ArrowUp -> application.arrowKeyUp()
+                ArrowDown -> application.arrowKeyDown()
+                ArrowLeft -> application.arrowKeyLeft()
+                ArrowRight -> application.arrowKeyRight()
             }
         }
     }
-
-    private fun trackNumber(model: Model, track: Int) = (8 * model.currentBank - 7) + track - 1
 
     /** Called when we receive sysex MIDI message on port 0.  */
     private fun onSysex0(data: String) {
