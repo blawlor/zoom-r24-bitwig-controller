@@ -6,7 +6,7 @@
 	<artifactId>zoom-r24-controller</artifactId>
 	<packaging>jar</packaging>
 	<name>Zoom R24 Controller</name>
-	<version>0.1</version>
+	<version>0.1-SNAPSHOT</version>
 
 	<properties>
 		<kotlin.version>1.4.30</kotlin.version>
