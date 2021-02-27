@@ -1,0 +1,1 @@
+All contributions are welcome. The recommended approach is by forking this repo, raising issues on the original repo, creating feature branches to address the issue (bug or feature request) and creating a pull request from that branch when ready.
