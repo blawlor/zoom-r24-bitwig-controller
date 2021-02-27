@@ -26,4 +26,8 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Build with maven wrapper
         run: ./mvnw clean install
-
+      - name: Save artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: extension-file
+          path: target/ZoomR24Controller.bwextension
