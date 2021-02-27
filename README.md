@@ -17,7 +17,7 @@ Use the provided _bitwig.properties.example_ file, and update the single propert
    (*not* the controller scripts directory - this is just for JavaScript)
    The provided example assumes a Linux installation so you may have to change it to point at your _Documents_ folder if 
    installing on Windows - see the Bitwig documentation for details.
-3. From this base/root directory, run ```./mvnw clean install``` on Linux/MacOS or ```mvnw clean install``` on Windows. 
+3. From this base/root directory, run ```./mvnw -Plocal-deploy clean install``` on Linux/MacOS or ```mvnw -Plocal-deploy clean install``` on Windows. 
    This command will first download the Maven build tool, and then invoke it to build the project and copy it to the 
    directory you configured in the properties file in step 2.
    
