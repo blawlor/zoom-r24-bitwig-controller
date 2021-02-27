@@ -2,13 +2,17 @@ package ie.polymorphsoft.bitwig
 
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.BooleanValueChangedCallback
-import com.bitwig.extension.callback.DoubleValueChangedCallback
 import com.bitwig.extension.callback.ShortMidiMessageReceivedCallback
 import com.bitwig.extension.controller.api.*
-import ie.polymorphsoft.bitwig.zoom.inputEvent
+import ie.polymorphsoft.bitwig.midi.inputEvent
 
 /*
 A class in Kotlin that allows us to continue using a Java class as the extension, but most of the real work is done here.
+An instance of the Model is created.
+Midi events are converted to InputControllerEvents and sent through the model.
+Observers convert callbacks from BWS into BitwigInputEvents and sends them through the model.
+(the update method is synchonized to ensure that one event at a time is processed)
+Output events generated from the model are interpreted and converted into calls to the Bitwig API.
  */
 class ExtensionProxy(val host: ControllerHost) {
     private var model: Model = initModel()
@@ -25,7 +29,7 @@ class ExtensionProxy(val host: ControllerHost) {
         transport = host.createTransport()
         arranger = host.createArranger(0)
         trackBank = host.createTrackBank(BANK_SIZE, 0, 0)
-        masterTrack = host.createMasterTrack(512)
+        masterTrack = host.createMasterTrack(0)
         cursorTrack = host.createCursorTrack("R24_CURSOR_TRACK", "Cursor Track", 0,0, true)
 
         for (bankNumber in 0..NO_OF_BANKS-1) {
@@ -38,12 +42,14 @@ class ExtensionProxy(val host: ControllerHost) {
                 val pan = track.pan()
                 pan.markInterested()
                 pan.setIndication(true)
-                track.mute().markInterested()
-                track.solo().markInterested()
-                track.arm().markInterested()
+                track.mute().addValueObserver(MuteObserver(trackNumber))
+                track.solo().addValueObserver(SoloObserver(trackNumber))
+                track.arm().addValueObserver(ArmedObserver(trackNumber))
             }
             trackBank.scrollPageForwards()
         }
+        masterTrack.volume().markInterested()
+        masterTrack.pan().markInterested()
         trackBank.scrollPosition().set(0)
         trackBank.followCursorTrack(cursorTrack)
         //TODO Clicking a track (i.e. change the cursor) in BWS can cause the page to change. So we will need to listen for
@@ -62,19 +68,31 @@ class ExtensionProxy(val host: ControllerHost) {
         }
     }
 
+    private inner class MuteObserver(val track:Int): BooleanValueChangedCallback {
+        override fun valueChanged(on: Boolean) {
+            update(model, MutedEvent(track, on))
+        }
+    }
+
+    private inner class SoloObserver(val track:Int): BooleanValueChangedCallback {
+        override fun valueChanged(on: Boolean) {
+            update(model, SoloedEvent(track, on))
+        }
+    }
+
+    private inner class ArmedObserver(val track:Int): BooleanValueChangedCallback {
+        override fun valueChanged(on: Boolean) {
+            update(model, ArmedEvent(track, on))
+        }
+    }
+
     /*
     Converts the Bitwig events coming from the Model updates into Bitwig actions.
     This is the equivalent of the Elm runtime.
      */
-    private fun fireBitwigEvent(bitwigEvent: BitwigEvent?) {
-        bitwigEvent?.let{
+    private fun fireBitwigEvent(outputEvent: OutputEvent?) {
+        outputEvent?.let{
             when (it) {
-                is SwitchToArrangeView -> {
-                    host.showPopupNotification("Arrange")
-//                    application.
-                }
-                is SwitchToClipLauncherView -> host.showPopupNotification("Clip")
-                is SwitchToMixerView -> host.showPopupNotification("Mixer")
                 is Play -> transport.play()
                 is Record -> transport.record()
                 is Stop -> transport.stop()
@@ -83,22 +101,23 @@ class ExtensionProxy(val host: ControllerHost) {
                 is Fader -> {
                     val track = trackBank.getItemAt(it.track)
                     if (track.exists().get()) {
-                        if (model.shift){
-                            val pan = track.pan();
-                            pan.set(it.level, 128);
-                        } else {
-                            val volume = track.volume();
-                            volume.set(it.level, 128);
-                        }
+                        track.volume().set(it.level, 128)
                     } else {
                         host.showPopupNotification("Track does not exist")
                         host.println("Track " + track + " does not exist")
                     }
                 }
-                ShiftOn -> host.println("Shift On")
-                ShiftOff -> host.println("Shift Off")
-                CtrlOn -> host.println("Ctrl On")
-                CtrlOff -> host.println("Ctrl Off")
+                is MasterFader -> masterTrack.volume().set(it.level, 128)
+                is Pan -> {
+                    val track = trackBank.getItemAt(it.track)
+                    if (track.exists().get()) {
+                        track.pan().set(it.level, 128)
+                    } else {
+                        host.showPopupNotification("Track does not exist")
+                        host.println("Track " + track + " does not exist")
+                    }
+                }
+                is MasterPan -> masterTrack.pan().set(it.level, 128)
                 BankDown -> trackBank.scrollPageBackwards()
                 BankUp -> trackBank.scrollPageForwards()
                 JogClockwise -> transport.incPosition(1.0, true)
@@ -109,6 +128,18 @@ class ExtensionProxy(val host: ControllerHost) {
                 ArrowDown -> application.arrowKeyDown()
                 ArrowLeft -> application.arrowKeyLeft()
                 ArrowRight -> application.arrowKeyRight()
+                is Mute -> {
+                    var track = it.track
+                    trackBank.getItemAt(track).mute().set(it.on)
+                }
+                is Solo -> {
+                    var track = it.track
+                    trackBank.getItemAt(track).solo().set(it.on)
+                }
+                is Rec -> {
+                    var track = it.track
+                    trackBank.getItemAt(track).arm().set(it.on)
+                }
             }
         }
     }

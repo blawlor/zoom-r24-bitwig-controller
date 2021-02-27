@@ -1,8 +1,10 @@
-package ie.polymorphsoft.bitwig.zoom
+package ie.polymorphsoft.bitwig.midi
 
 import com.bitwig.extension.api.util.midi.ShortMidiMessage
-import org.junit.jupiter.api.Test
+import ie.polymorphsoft.bitwig.ControllerInputActions
+import ie.polymorphsoft.bitwig.ControllerInputs
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class MidiConversionTest {
 
@@ -11,14 +13,14 @@ class MidiConversionTest {
         var event = ShortMidiMessage(144, 0, 127).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.PMR1, it.input)
-            assertEquals(InputActions.ON, it.action)
+            assertEquals(ControllerInputs.PMR1, it.input)
+            assertEquals(ControllerInputActions.ON, it.action)
         }
         event = ShortMidiMessage(144, 0, 0).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.PMR1, it.input)
-            assertEquals(InputActions.OFF, it.action)
+            assertEquals(ControllerInputs.PMR1, it.input)
+            assertEquals(ControllerInputActions.OFF, it.action)
         }
         event = ShortMidiMessage(144, 0, 12).inputEvent()
         assertNull(event)
@@ -29,14 +31,14 @@ class MidiConversionTest {
         var event = ShortMidiMessage(144, 1, 127).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.PMR2, it.input)
-            assertEquals(InputActions.ON, it.action)
+            assertEquals(ControllerInputs.PMR2, it.input)
+            assertEquals(ControllerInputActions.ON, it.action)
         }
         event = ShortMidiMessage(144, 1, 0).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.PMR2, it.input)
-            assertEquals(InputActions.OFF, it.action)
+            assertEquals(ControllerInputs.PMR2, it.input)
+            assertEquals(ControllerInputActions.OFF, it.action)
         }
         event = ShortMidiMessage(144, 1, 12).inputEvent()
         assertNull(event)
@@ -47,14 +49,14 @@ class MidiConversionTest {
         var event = ShortMidiMessage(176, 60, 1).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.JogWheel, it.input)
-            assertEquals(InputActions.ON, it.action)
+            assertEquals(ControllerInputs.JogWheel, it.input)
+            assertEquals(ControllerInputActions.ON, it.action)
         }
         event = ShortMidiMessage(176, 60, 65).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.JogWheel, it.input)
-            assertEquals(InputActions.OFF, it.action)
+            assertEquals(ControllerInputs.JogWheel, it.input)
+            assertEquals(ControllerInputActions.OFF, it.action)
         }
         event = ShortMidiMessage(176, 60, 0).inputEvent()
         assertNull(event)
@@ -65,14 +67,14 @@ class MidiConversionTest {
         var event = ShortMidiMessage(144, 54, 127).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.F1, it.input)
-            assertEquals(InputActions.ON, it.action)
+            assertEquals(ControllerInputs.F1, it.input)
+            assertEquals(ControllerInputActions.ON, it.action)
         }
         event = ShortMidiMessage(144, 54, 0).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.F1, it.input)
-            assertEquals(InputActions.OFF, it.action)
+            assertEquals(ControllerInputs.F1, it.input)
+            assertEquals(ControllerInputActions.OFF, it.action)
         }
     }
 
@@ -81,14 +83,14 @@ class MidiConversionTest {
         var event = ShortMidiMessage(144, 55, 127).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.F2, it.input)
-            assertEquals(InputActions.ON, it.action)
+            assertEquals(ControllerInputs.F2, it.input)
+            assertEquals(ControllerInputActions.ON, it.action)
         }
         event = ShortMidiMessage(144, 55, 0).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.F2, it.input)
-            assertEquals(InputActions.OFF, it.action)
+            assertEquals(ControllerInputs.F2, it.input)
+            assertEquals(ControllerInputActions.OFF, it.action)
         }
     }
 
@@ -97,26 +99,26 @@ class MidiConversionTest {
         var event = ShortMidiMessage(144, 46, 127).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.BANK_DOWN, it.input)
-            assertEquals(InputActions.ON, it.action)
+            assertEquals(ControllerInputs.BANK_DOWN, it.input)
+            assertEquals(ControllerInputActions.ON, it.action)
         }
         event = ShortMidiMessage(144, 46, 0).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.BANK_DOWN, it.input)
-            assertEquals(InputActions.OFF, it.action)
+            assertEquals(ControllerInputs.BANK_DOWN, it.input)
+            assertEquals(ControllerInputActions.OFF, it.action)
         }
         event = ShortMidiMessage(144, 47, 127).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.BANK_UP, it.input)
-            assertEquals(InputActions.ON, it.action)
+            assertEquals(ControllerInputs.BANK_UP, it.input)
+            assertEquals(ControllerInputActions.ON, it.action)
         }
         event = ShortMidiMessage(144, 47, 0).inputEvent()
         assertNotNull(event)
         event?.let {
-            assertEquals(Inputs.BANK_UP, it.input)
-            assertEquals(InputActions.OFF, it.action)
+            assertEquals(ControllerInputs.BANK_UP, it.input)
+            assertEquals(ControllerInputActions.OFF, it.action)
         }
 
     }
