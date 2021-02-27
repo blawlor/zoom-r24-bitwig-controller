@@ -1,0 +1,2 @@
+# This example assumes a Linux machine. Windows/Mac may need a different format.
+bitwig.extension.dir=YOUR_HOME_DIR/Bitwig\ Studio/Extensions
