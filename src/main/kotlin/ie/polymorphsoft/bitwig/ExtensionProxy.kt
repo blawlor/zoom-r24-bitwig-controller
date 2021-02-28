@@ -30,6 +30,8 @@ class ExtensionProxy(val host: ControllerHost) {
         currentTrackBank = host.createTrackBank(BANK_SIZE, 0, 0)
         masterTrack = host.createMasterTrack(0)
         cursorTrack = host.createCursorTrack("R24_CURSOR_TRACK", "Cursor Track", 0,0, true)
+
+        // Current track bank used to enable the faders (vol and pan) and PMR buttons (mute,solo,arm) per track
         currentTrackBank.scrollPosition().markInterested()
         currentTrackBank.scrollPosition().addValueObserver{ index -> doUpdate(BankChanged(index))}
 
@@ -41,6 +43,8 @@ class ExtensionProxy(val host: ControllerHost) {
             val pan = track.pan()
             pan.setIndication(true)
          }
+
+        // This trackbank is used to iterate over all possible tracks and attach observers of mute,solo,arm
         val allTracks = host.createTrackBank(BANK_SIZE* NO_OF_BANKS,0,0)
         for (trackNumber in 0..allTracks.sizeOfBank-1) {
             val track = allTracks.getItemAt(trackNumber)
@@ -49,6 +53,7 @@ class ExtensionProxy(val host: ControllerHost) {
             track.mute().addValueObserver { value -> trackObserver(track,  MutedEvent(track.position().get(), value)) }
             track.solo().addValueObserver { value -> trackObserver(track, SoloedEvent(track.position().get(), value)) }
             track.arm().addValueObserver { value -> trackObserver(track, ArmedEvent(track.position().get(), value)) }
+            //As tracks are created in their positions, this event is triggered
             track.position().addValueObserver{pos -> if (pos > -1) initializeNewTrack(track)}
         }
         masterTrack.volume().markInterested()
@@ -65,17 +70,14 @@ class ExtensionProxy(val host: ControllerHost) {
         doUpdate(ArmedEvent(track.position().get(), track.arm().get()))
     }
 
-    /** Called when we receive short MIDI message on port 0.  */
     private fun onMidi0(msg: ShortMidiMessage) {
         msg.inputEvent()?.let {
             doUpdate(it)
         }
     }
 
-    private fun trackObserver(track: Track, event: BitwigTrackEvent){
-        if (track.exists().get()){
-            doUpdate(event)
-        }
+    private fun trackObserver(track: Track, event: BWSTrackEvent) {
+        if (track.exists().get()) doUpdate(event)
     }
 
     private fun doUpdate(inputEvent: InputEvent) {
@@ -128,19 +130,9 @@ class ExtensionProxy(val host: ControllerHost) {
                 ArrowDown -> application.arrowKeyDown()
                 ArrowLeft -> application.arrowKeyLeft()
                 ArrowRight -> application.arrowKeyRight()
-                is Mute -> {
-                    host.println("Setting mute (${it.on}) on track ${it.track}")
-                    var track = it.track
-                    currentTrackBank.getItemAt(track).mute().set(it.on)
-                }
-                is Solo -> {
-                    var track = it.track
-                    currentTrackBank.getItemAt(track).solo().set(it.on)
-                }
-                is Rec -> {
-                    var track = it.track
-                    currentTrackBank.getItemAt(track).arm().set(it.on)
-                }
+                is Mute ->  currentTrackBank.getItemAt(it.track).mute().set(it.on)
+                is Solo ->  currentTrackBank.getItemAt(it.track).solo().set(it.on)
+                is Rec ->   currentTrackBank.getItemAt(it.track).arm().set(it.on)
             }
         }
     }
