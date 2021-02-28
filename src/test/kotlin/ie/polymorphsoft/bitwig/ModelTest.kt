@@ -143,19 +143,16 @@ class ModelTest {
         val (newModel1, bitwigEvent1) = update(model, ControllerInputEvent(ControllerInputs.BANK_UP, ControllerInputActions.ON))
         assertNotNull(bitwigEvent1)
         assertEquals(BankUp, bitwigEvent1)
-        assertEquals(1, newModel1.currentBank)
+        assertEquals(0, newModel1.currentBank)//Model not to be updated. This is done by BSW events
         val (newModel2, bitwigEvent2) = update(newModel1, ControllerInputEvent(ControllerInputs.BANK_UP, ControllerInputActions.ON))
         assertNotNull(bitwigEvent2)
         assertEquals(BankUp, bitwigEvent2)
-        assertEquals(2, newModel2.currentBank)
         val (newModel3, bitwigEvent3) = update(newModel2, ControllerInputEvent(ControllerInputs.BANK_UP, ControllerInputActions.ON))
         assertNotNull(bitwigEvent3)
         assertEquals(BankUp, bitwigEvent3)
-        assertEquals(3, newModel3.currentBank)
-        val (newModel4, bitwigEvent4) = update(newModel3, ControllerInputEvent(ControllerInputs.BANK_DOWN, ControllerInputActions.ON))
+        val (newModel4, bitwigEvent4) = update(newModel3.copy(currentBank = 1), ControllerInputEvent(ControllerInputs.BANK_DOWN, ControllerInputActions.ON))
         assertNotNull(bitwigEvent4)
         assertEquals(BankDown, bitwigEvent4)
-        assertEquals(2, newModel4.currentBank)
     }
 
     @Test
