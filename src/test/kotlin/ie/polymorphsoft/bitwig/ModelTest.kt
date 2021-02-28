@@ -129,7 +129,7 @@ class ModelTest {
         assertEquals(7, (bitwigEvent8 as Pan).track)
         val (_, bitwigEventM) = update(model, ControllerInputEvent(ControllerInputs.MASTER_FADER, ControllerInputActions.ON, 0))
         assertNotNull(bitwigEventM)
-        assertEquals(0, (bitwigEventM as MasterFader).level)
+        assertEquals(0, (bitwigEventM as MasterPan).level)
     }
 
 
@@ -161,47 +161,45 @@ class ModelTest {
     @Test
     internal fun muteSoloRec(){
         val model = initModel()
-        val (newModel1a, bitwigEvent1a) = update(model, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
-        val (newModel1, bitwigEvent1) = update(newModel1a, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.OFF))
-        assertNotNull(bitwigEvent1a)
-        assertTrue(bitwigEvent1a is Mute)
-        assertEquals(0, (bitwigEvent1a as Mute).track)
-        assertTrue((bitwigEvent1a as Mute).on)
-        assertTrue(newModel1a.muteState.isOn(0))
-        val (newModel2, bitwigEvent2) = update(newModel1, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
-        assertNotNull(bitwigEvent2)
-        assertTrue(bitwigEvent2 is Mute)
-        assertEquals(0, (bitwigEvent2 as Mute).track)
-        assertFalse((bitwigEvent2 as Mute).on)
-        assertFalse(newModel2.muteState.isOn(0))
-        val (newModel3, bitwigEvent3) = update(newModel2, ControllerInputEvent(ControllerInputs.F1, ControllerInputActions.ON)) //Shift held on
-        val (newModel4, bitwigEvent4) = update(newModel3, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
-        assertNotNull(bitwigEvent4)
-        assertTrue(bitwigEvent4 is Solo)
-        assertEquals(0, (bitwigEvent4 as Solo).track)
-        assertTrue((bitwigEvent4 as Solo).on)
-        assertTrue(newModel4.soloState.isOn(0))
-        val (newModel5, bitwigEvent5) = update(newModel4, ControllerInputEvent(ControllerInputs.F1, ControllerInputActions.OFF)) //Shift off
-        val (newModel6, bitwigEvent6) = update(newModel5, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
-        assertNotNull(bitwigEvent6)
-        assertTrue(bitwigEvent6 is Mute)
-        assertEquals(0, (bitwigEvent6 as Mute).track)
-        assertTrue((bitwigEvent6 as Mute).on)
-        assertTrue(newModel6.soloState.isOn(0))
-        val (newModel7, bitwigEvent7) = update(newModel6, ControllerInputEvent(ControllerInputs.F2, ControllerInputActions.ON)) //Ctrl on
-        val (newModel8, bitwigEvent8) = update(newModel7, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
-        assertNotNull(bitwigEvent8)
-        assertTrue(bitwigEvent8 is Rec)
-        assertEquals(0, (bitwigEvent8 as Rec).track)
-        assertTrue((bitwigEvent8 as Rec).on)
-        assertTrue(newModel8.recState.isOn(0))
-        val (newModel9, bitwigEvent9) = update(newModel8, ControllerInputEvent(ControllerInputs.F2, ControllerInputActions.OFF)) //Ctrl off
-        val (newModel10, bitwigEvent10) = update(newModel9, ControllerInputEvent(ControllerInputs.PMR2, ControllerInputActions.ON))
-        assertNotNull(bitwigEvent10)
-        assertTrue(bitwigEvent10 is Mute)
-        assertEquals(1, (bitwigEvent10 as Mute).track)
-        assertTrue((bitwigEvent10 as Mute).on)
-        assertTrue(newModel10.muteState.isOn(1))
+        val (newModel1a, event1) = update(model, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
+        val (model1, _) = update(newModel1a, ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.OFF)) //Off button shouldn't make any difference - testing this
+        assertNotNull(event1)
+        assertTrue(event1 is Mute)
+        assertEquals(0, (event1 as Mute).track)
+        assertTrue((event1 as Mute).on)
+        assertFalse(model1.muteState.isOn(0)) //This event should not change the state - that can only come from Bitwig
+
+        //Set mute directly
+        val (model2, event2) = update(model1.copy(muteState = model.muteState.set(0, true)), ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
+        assertNotNull(event2)
+        assertTrue(event2 is Mute)
+        assertEquals(0, (event2 as Mute).track)
+        assertFalse((event2 as Mute).on)
+        assertTrue(model2.muteState.isOn(0)) // Model unchanged
+
+        //Shift PMR = Solo
+        val (model3, event3) = update(model2.copy(shift = true), ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
+        assertNotNull(event3)
+        assertTrue(event3 is Solo)
+        assertEquals(0, (event3 as Solo).track)
+        assertTrue((event3 as Solo).on)
+        assertFalse(model3.soloState.isOn(0))
+
+        //Ctrl on
+        val (model4, event4) = update(model3.copy(ctrl = true, shift = false), ControllerInputEvent(ControllerInputs.PMR1, ControllerInputActions.ON))
+        assertNotNull(event4)
+        assertTrue(event4 is Rec)
+        assertEquals(0, (event4 as Rec).track)
+        assertTrue((event4 as Rec).on)
+        assertFalse(model4.recState.isOn(0)) // Model unchanged
+
+        //Ctrl off again
+        val (model5, event5) = update(model4.copy(ctrl = false), ControllerInputEvent(ControllerInputs.PMR2, ControllerInputActions.ON))
+        assertNotNull(event5)
+        assertTrue(event5 is Mute)
+        assertEquals(1, (event5 as Mute).track)
+        assertTrue((event5 as Mute).on)
+        assertTrue(model5.muteState.isOn(0)) // Mute still on from earlier
     }
 
     @Test

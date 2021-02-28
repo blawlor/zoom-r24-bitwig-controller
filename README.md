@@ -1,5 +1,7 @@
 # Zoom R12/R24 Controller Extension for Bitwig Studio
 
+## Note: This project is still under development and should be considered alpha quality. 
+
 ## What is it?
 This code allows you to use your Zoom R12/24 (R24) as a control surface for Bitwig Studio (BWS)
 

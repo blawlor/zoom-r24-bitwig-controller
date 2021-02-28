@@ -33,12 +33,14 @@ sealed class InputEvent
 
 data class ControllerInputEvent(val input:ControllerInputs, val action: ControllerInputActions, val value: Int = 0):InputEvent()
 
-sealed class BitwigInputEvent(val track: Int):InputEvent()
-sealed class ContinuousBitwigInputEvent(track: Int, val value: Int):BitwigInputEvent(track)
-sealed class ToggleBitwigInputEvent(track: Int, val on: Boolean):BitwigInputEvent(track)
+sealed class BitwigInputEvent: InputEvent()
+sealed class BitwigTrackEvent(val track: Int):BitwigInputEvent()
+sealed class ContinuousBitwigInputEvent(track: Int, val value: Int):BitwigTrackEvent(track)
+sealed class ToggleBitwigInputEvent(track: Int, val on: Boolean):BitwigTrackEvent(track)
 class MutedEvent(track: Int, on: Boolean): ToggleBitwigInputEvent(track, on)
 class SoloedEvent(track: Int, on: Boolean): ToggleBitwigInputEvent(track, on)
 class ArmedEvent(track: Int, on: Boolean): ToggleBitwigInputEvent(track, on)
+class BankChanged(val bankStartIndex: Int): BitwigInputEvent()
 
 // Because the Zoom R24 accepts no MIDI input (e.g. to set LEDs), all output events are effectively for Bitwig
 sealed class OutputEvent
@@ -83,10 +85,8 @@ data class Model(val mode: BitwigMode,
     fun shiftOff() = this.copy(shift = false)
     fun ctrlOn() = this.copy(ctrl = true)
     fun ctrlOff() = this.copy(ctrl = false)
-    fun bankUp() = if (currentBank< NO_OF_BANKS-1) this.copy(currentBank = currentBank+1) else this
-    fun bankDown() = if (currentBank>0) this.copy(currentBank = currentBank-1) else this
     override fun toString(): String {
-        return "Model(mode=$mode, shift=$shift, ctrl=$ctrl, currentBank=$currentBank, muteState=$muteState, soloState=$soloState, recState=$recState)"
+        return "Model(mode=$mode, shift=$shift, ctrl=$ctrl, currentBank=$currentBank, \nmuteState=$muteState, \nsoloState=$soloState, \nrecState=$recState\n)"
     }
 }
 
@@ -96,16 +96,21 @@ enum class BitwigMode {
 
 data class TrackState(val state: Array<Boolean> ) {
     fun isOn(index: Int) = state[index]
-    private fun set(index: Int, value: Boolean) = run {
+    private fun setCopy(index: Int, value: Boolean) = run {
         val newArray = state.copyOf()
         newArray[index] = value
         this.copy(state = newArray)
     }
-    fun on(index: Int) = set(index, true)
-    fun off(index: Int) = set(index, false)
-    fun toggle(index: Int) = set(index, !state[index])
+    fun on(index: Int) = setCopy(index, true)
+    fun off(index: Int) = setCopy(index, false)
+    fun toggle(index: Int) = setCopy(index, !state[index])
+    fun set(index: Int, on:Boolean) = setCopy(index, on)
     override fun toString(): String {
-        return "TrackState(state=${state.contentToString()})"
+        val onIndices = state
+            .mapIndexed { index, b -> Pair(index, b) }
+            .filter { p -> p.second }
+            .map {p -> p.first.toString()}
+        return "TrackState(state=$onIndices)"
     }
 
 
@@ -136,41 +141,15 @@ private fun updateForController(model: Model, inputEvent: ControllerInputEvent):
                 ControllerInputActions.ON -> Pair(model.ctrlOn(), null)
                 ControllerInputActions.OFF -> Pair(model.ctrlOff(), null)
             }
-        ControllerInputs.F3 -> Pair(model, null)
-        ControllerInputs.F4 -> Pair(model, null)
-        ControllerInputs.F5 ->
-            when(inputEvent.action) {
-                ControllerInputActions.ON -> {
-                    val newModel = model.toggleMode()
-                    Pair(newModel, null)
-                }
-                ControllerInputActions.OFF -> Pair(model, null)
-            }
-        ControllerInputs.PLAY -> //TODO Check to see if playing
-            when(inputEvent.action) {
-                ControllerInputActions.ON -> Pair(model, Play)
-                ControllerInputActions.OFF -> Pair(model, null)
-            }
-        ControllerInputs.REC ->
-            when(inputEvent.action) {
-                ControllerInputActions.ON -> Pair(model, Record)
-                ControllerInputActions.OFF -> Pair(model, null)
-            }
-        ControllerInputs.STOP ->
-            when(inputEvent.action) {
-                ControllerInputActions.ON -> Pair(model, Stop)
-                ControllerInputActions.OFF -> Pair(model, null)
-            }
-        ControllerInputs.FF ->
-            when(inputEvent.action) {
-                ControllerInputActions.ON -> Pair(model, FastForward)
-                ControllerInputActions.OFF -> Pair(model, null)
-            }
-        ControllerInputs.REW ->
-            when(inputEvent.action) {
-                ControllerInputActions.ON -> Pair(model, Rewind)
-                ControllerInputActions.OFF -> Pair(model, null)
-            }
+        ControllerInputs.F3 -> Pair(model, null) //TODO Assign to something
+        ControllerInputs.F4 -> Pair(model, null) // TODO Assign to something
+        ControllerInputs.F5 -> onOrNothing(model, inputEvent, Pair(model.toggleMode(), null))
+        ControllerInputs.PLAY -> onOrNothing(model, inputEvent, Play)//TODO Check to see if playing
+        ControllerInputs.REC ->onOrNothing(model, inputEvent, Record)
+        ControllerInputs.STOP ->onOrNothing(model, inputEvent, Stop)
+        ControllerInputs.FF -> onOrNothing(model, inputEvent, FastForward)
+        ControllerInputs.REW -> onOrNothing(model, inputEvent, Rewind)
+
         ControllerInputs.FADER1 -> updateFader(model, 0, inputEvent.action, inputEvent.value)
         ControllerInputs.FADER2 -> updateFader(model, 1, inputEvent.action, inputEvent.value)
         ControllerInputs.FADER3 -> updateFader(model, 2, inputEvent.action, inputEvent.value)
@@ -179,18 +158,18 @@ private fun updateForController(model: Model, inputEvent: ControllerInputEvent):
         ControllerInputs.FADER6 -> updateFader(model, 5, inputEvent.action, inputEvent.value)
         ControllerInputs.FADER7 -> updateFader(model, 6, inputEvent.action, inputEvent.value)
         ControllerInputs.FADER8 -> updateFader(model, 7, inputEvent.action, inputEvent.value)
-        ControllerInputs.MASTER_FADER ->
-            when(inputEvent.action) {
-                ControllerInputActions.ON -> Pair(model, MasterFader(inputEvent.value))
-                ControllerInputActions.OFF -> Pair(model, null)
-            }
+
+        ControllerInputs.MASTER_FADER -> updateMasterFader(model, inputEvent.action, inputEvent.value)
+
         ControllerInputs.JogWheel -> updateJog(model, inputEvent.action)
         ControllerInputs.UP -> direction(model, inputEvent, ArrowUp, ArrowDown)
         ControllerInputs.DOWN -> direction(model, inputEvent, ArrowDown, ArrowUp)
         ControllerInputs.LEFT -> direction(model, inputEvent, ArrowLeft, ArrowRight)
         ControllerInputs.RIGHT -> direction(model, inputEvent, ArrowRight, ArrowLeft)
-        ControllerInputs.BANK_DOWN -> Pair(model.bankDown(), if (model.currentBank>0) BankDown else null) // Don't send the event if the bank was already 0
-        ControllerInputs.BANK_UP -> Pair(model.bankUp(), BankUp)
+
+        ControllerInputs.BANK_DOWN -> onOrNothing(model, inputEvent, Pair(model, if (model.currentBank>0) BankDown else null)) // Don't send the event if the bank was already 0
+        ControllerInputs.BANK_UP -> onOrNothing(model, inputEvent, Pair(model, BankUp))
+
         ControllerInputs.PMR1 -> updatePMR(model, 0, inputEvent.action)
         ControllerInputs.PMR2 -> updatePMR(model, 1, inputEvent.action)
         ControllerInputs.PMR3 -> updatePMR(model, 2, inputEvent.action)
@@ -200,15 +179,13 @@ private fun updateForController(model: Model, inputEvent: ControllerInputEvent):
         ControllerInputs.PMR7 -> updatePMR(model, 6, inputEvent.action)
         ControllerInputs.PMR8 -> updatePMR(model, 7, inputEvent.action)
 
-
     }
 }
 
 private fun updateForBitwig(model: Model, inputEvent: BitwigInputEvent): Pair<Model, OutputEvent?> {
     return when (inputEvent) {
         is MutedEvent -> {
-            val track = inputEvent.track
-            val newMuteState = if (inputEvent.on) model.muteState.on(track) else model.muteState.off(track)
+            val newMuteState = model.muteState.set(inputEvent.track, inputEvent.on)//if (inputEvent.on) model.muteState.on(track) else model.muteState.off(track)
             Pair(model.copy(muteState = newMuteState), null)
         }
         is SoloedEvent -> {
@@ -221,6 +198,7 @@ private fun updateForBitwig(model: Model, inputEvent: BitwigInputEvent): Pair<Mo
             val newRecState = if (inputEvent.on) model.recState.on(track) else model.recState.off(track)
             Pair(model.copy(recState = newRecState), null)
         }
+        is BankChanged -> Pair(model.copy(currentBank = inputEvent.bankStartIndex/8), null)
     }
 }
 
@@ -249,19 +227,18 @@ private fun updatePMR(model: Model, track: Int, action: ControllerInputActions):
     }
 
 private fun toggleMuteState(model: Model, track: Int):Pair<Model, OutputEvent?> {
-    val newMuteState = model.muteState.toggle(track)
-    return Pair(model.copy(muteState = newMuteState), Mute(track, newMuteState.isOn(track)))
+    return Pair(model, Mute(track, !model.muteState.isOn(absoluteTrackNumber(model.currentBank, track))))
 }
 
 private fun toggleSoloState(model: Model, track: Int):Pair<Model, OutputEvent?> {
-    val newSoloState = model.soloState.toggle(track)
-    return Pair(model.copy(soloState = newSoloState), Solo(track, newSoloState.isOn(track)))
+    return Pair(model, Solo(track, !model.soloState.isOn(absoluteTrackNumber(model.currentBank, track))))
 }
 
 private fun toggleRecState(model: Model, track: Int):Pair<Model, OutputEvent?> {
-    val newRecState = model.recState.toggle(track)
-    return Pair(model.copy(recState = newRecState), Rec(track, newRecState.isOn(track)))
+    return Pair(model, Rec(track, !model.recState.isOn(absoluteTrackNumber(model.currentBank, track))))
 }
+
+private fun absoluteTrackNumber(bankNumber: Int, relativeTrackNumber:Int) = (bankNumber* BANK_SIZE) + relativeTrackNumber
 
 private fun updateJog(model: Model, action: ControllerInputActions): Pair<Model, OutputEvent?> {
     return if (model.shift){
@@ -283,3 +260,20 @@ private fun updateFader(model: Model, track: Int, action: ControllerInputActions
             ControllerInputActions.OFF -> Pair(model, null)
         }
 
+private fun updateMasterFader(model: Model, action: ControllerInputActions, value: Int): Pair<Model, OutputEvent?> =
+    when(action) {
+        ControllerInputActions.ON -> if (model.shift) Pair(model, MasterPan(value)) else Pair(model, MasterFader(value))
+        ControllerInputActions.OFF -> Pair(model, null)
+    }
+
+private fun onOrNothing(model: Model, inputEvent: ControllerInputEvent, outputEvent: OutputEvent):Pair<Model, OutputEvent?> =
+    when(inputEvent.action) {
+        ControllerInputActions.ON -> Pair(model, outputEvent)
+        ControllerInputActions.OFF -> Pair(model, null)
+    }
+
+private fun onOrNothing(model: Model, inputEvent: ControllerInputEvent, result: Pair<Model, OutputEvent?>):Pair<Model, OutputEvent?> =
+    when(inputEvent.action) {
+        ControllerInputActions.ON -> result
+        ControllerInputActions.OFF -> Pair(model, null)
+    }

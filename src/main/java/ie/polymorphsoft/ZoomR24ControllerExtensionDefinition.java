@@ -29,7 +29,7 @@ public class ZoomR24ControllerExtensionDefinition extends ControllerExtensionDef
    @Override
    public String getVersion()
    {
-      return "0.1";
+      return "0.1-SNAPSHOT";
    }
 
    @Override
