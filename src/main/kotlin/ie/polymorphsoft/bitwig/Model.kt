@@ -68,9 +68,10 @@ object ArrowUp: OutputEvent()
 object ArrowDown: OutputEvent()
 object ArrowLeft: OutputEvent()
 object ArrowRight: OutputEvent()
-class Fader(val track: Int, val level: Int): OutputEvent()
+class Volume(val track: Int, val level: Int): OutputEvent()
 class Pan(val track: Int, val level: Int): OutputEvent()
-class MasterFader(val level: Int): OutputEvent()
+class Parameter(val param: Int, val value: Int): OutputEvent()
+class MasterVolume(val level: Int): OutputEvent()
 class MasterPan(val level: Int): OutputEvent()
 class Mute(val track: Int, val on: Boolean = true): OutputEvent()
 class Solo(val track: Int, val on: Boolean = true): OutputEvent()
@@ -136,7 +137,6 @@ fun initRec() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
  The Update function, which interprets input events in the context of the current
  model, and returns a Pair: the updated model and an optional output event.
  */
-@Synchronized
 fun update(model: Model, inputEvent: InputEvent): Pair<Model, OutputEvent?> {
     return when (inputEvent) {
         is ControllerInputEvent -> updateForControllerEvents(model, inputEvent)
@@ -252,15 +252,21 @@ private fun updateJog(model: Model, action: ControllerInputActions): Pair<Model,
     }
 }
 
-private fun updateFader(model: Model, track: Int, action: ControllerInputActions, value: Int): Pair<Model, OutputEvent?> =
+private fun updateFader(model: Model, faderNumber: Int, action: ControllerInputActions, value: Int): Pair<Model, OutputEvent?> =
         when(action) {
-            ControllerInputActions.ON -> if (model.shift) Pair(model, Pan(track, value)) else Pair(model, Fader(track, value))
+            ControllerInputActions.ON ->
+                when (model.mode){
+                    BitwigMode.TRACKS -> {
+                        if (model.shift) Pair(model, Pan(faderNumber, value)) else Pair(model, Volume(faderNumber, value))
+                    }
+                    BitwigMode.DEVICES -> Pair(model, Parameter(faderNumber, value))
+            }
             ControllerInputActions.OFF -> Pair(model, null)
         }
 
 private fun updateMasterFader(model: Model, action: ControllerInputActions, value: Int): Pair<Model, OutputEvent?> =
     when(action) {
-        ControllerInputActions.ON -> if (model.shift) Pair(model, MasterPan(value)) else Pair(model, MasterFader(value))
+        ControllerInputActions.ON -> if (model.shift) Pair(model, MasterPan(value)) else Pair(model, MasterVolume(value))
         ControllerInputActions.OFF -> Pair(model, null)
     }
 

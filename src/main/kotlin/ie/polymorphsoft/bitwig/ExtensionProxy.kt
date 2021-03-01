@@ -63,6 +63,7 @@ class ExtensionProxy(val host: ControllerHost) {
 
         for (parameterIndex in 1..NO_OF_PARAMS-1) {
             remoteControlBank.getParameter(parameterIndex).markInterested()
+            remoteControlBank.getParameter(parameterIndex).exists().markInterested()
         }
         cursorDevice.isEnabled().markInterested()
         cursorDevice.isWindowOpen().markInterested()
@@ -91,6 +92,7 @@ class ExtensionProxy(val host: ControllerHost) {
         if (track.exists().get()) doUpdate(event)
     }
 
+    @Synchronized
     private fun doUpdate(inputEvent: InputEvent) {
         host.println("Incoming event: $inputEvent")
         val (updatedModel, bitwigEvent) = update(model, inputEvent)
@@ -111,7 +113,7 @@ class ExtensionProxy(val host: ControllerHost) {
                 is Stop -> transport.stop()
                 is FastForward -> transport.fastForward()
                 is Rewind -> transport.rewind()
-                is Fader -> {
+                is Volume -> {
                     val track = currentTrackBank.getItemAt(it.track)
                     if (track.exists().get()) {
                         track.volume().set(it.level, 128)
@@ -120,7 +122,7 @@ class ExtensionProxy(val host: ControllerHost) {
                         host.println("Track " + track + " does not exist")
                     }
                 }
-                is MasterFader -> masterTrack.volume().set(it.level, 128)
+                is MasterVolume -> masterTrack.volume().set(it.level, 128)
                 is Pan -> {
                     val track = currentTrackBank.getItemAt(it.track)
                     if (track.exists().get()) {
@@ -145,6 +147,15 @@ class ExtensionProxy(val host: ControllerHost) {
                 is Solo ->  currentTrackBank.getItemAt(it.track).solo().set(it.on)
                 is Rec ->   currentTrackBank.getItemAt(it.track).arm().set(it.on)
                 is ToggleMode -> switchModeIndication(it.mode)
+                is Parameter ->{
+                    val parameter = remoteControlBank.getParameter(it.param)
+                    if (parameter.exists().get()) {
+                        parameter.set(it.value, 128)
+                    } else {
+                        host.showPopupNotification("Parameter does not exist")
+                        host.println("Parameter " + it.param + " does not exist")
+                    }
+                }
             }
         }
     }
