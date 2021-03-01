@@ -22,6 +22,8 @@ class ExtensionProxy(val host: ControllerHost) {
     private var masterTrack: MasterTrack
     private var cursorTrack: CursorTrack
     private val userControls: UserControlBank
+    private val cursorDevice: Device
+    private val remoteControlBank: RemoteControlsPage
     init {
         host.println("Proxy initialized.")
         application = host.createApplication()
@@ -30,6 +32,8 @@ class ExtensionProxy(val host: ControllerHost) {
         currentTrackBank = host.createTrackBank(BANK_SIZE, 0, 0)
         masterTrack = host.createMasterTrack(0)
         cursorTrack = host.createCursorTrack("R24_CURSOR_TRACK", "Cursor Track", 0,0, true)
+        cursorDevice = cursorTrack.createCursorDevice("R24_CURSOR_DEVICE", "Cursor Device",0,CursorDeviceFollowMode.FOLLOW_SELECTION)
+        remoteControlBank = cursorDevice.createCursorRemoteControlsPage(8)
 
         // Current track bank used to enable the faders (vol and pan) and PMR buttons (mute,solo,arm) per track
         currentTrackBank.scrollPosition().markInterested()
@@ -56,6 +60,13 @@ class ExtensionProxy(val host: ControllerHost) {
             //As tracks are created in their positions, this event is triggered
             track.position().addValueObserver{pos -> if (pos > -1) initializeNewTrack(track)}
         }
+
+        for (parameterIndex in 1..NO_OF_PARAMS-1) {
+            remoteControlBank.getParameter(parameterIndex).markInterested()
+        }
+        cursorDevice.isEnabled().markInterested()
+        cursorDevice.isWindowOpen().markInterested()
+
         masterTrack.volume().markInterested()
         masterTrack.pan().markInterested()
         currentTrackBank.followCursorTrack(cursorTrack)
@@ -133,7 +144,35 @@ class ExtensionProxy(val host: ControllerHost) {
                 is Mute ->  currentTrackBank.getItemAt(it.track).mute().set(it.on)
                 is Solo ->  currentTrackBank.getItemAt(it.track).solo().set(it.on)
                 is Rec ->   currentTrackBank.getItemAt(it.track).arm().set(it.on)
+                is ToggleMode -> switchModeIndication(it.mode)
             }
+        }
+    }
+
+    private fun switchModeIndication(mode: Mode){
+        when (mode) {
+            Mode.TRACKS -> {
+                setDeviceIndication(false)
+                setTrackIndication(true)
+            }
+            Mode.DEVICES -> {
+                setDeviceIndication(true)
+                setTrackIndication(false)
+            }
+        }
+    }
+
+    private fun setTrackIndication(enable: Boolean){
+        for (trackNumber in 0..currentTrackBank.sizeOfBank - 1) {
+            val track = currentTrackBank.getItemAt(trackNumber)
+            track.volume().setIndication(enable)
+            track.pan().setIndication(enable)
+        }
+    }
+
+    private fun setDeviceIndication(enable: Boolean){
+        for(parameterIndex in 0..NO_OF_PARAMS-1) {
+            remoteControlBank.getParameter(parameterIndex).setIndication(enable)
         }
     }
 

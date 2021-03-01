@@ -13,6 +13,7 @@ knowledge of midi or the Bitwig API encoded in the model or the update function.
 
 val BANK_SIZE = 8
 val NO_OF_BANKS = 8
+val NO_OF_PARAMS = 8
 
 
 
@@ -74,11 +75,12 @@ class MasterPan(val level: Int): OutputEvent()
 class Mute(val track: Int, val on: Boolean = true): OutputEvent()
 class Solo(val track: Int, val on: Boolean = true): OutputEvent()
 class Rec(val track: Int, val on: Boolean = true): OutputEvent()
+class ToggleMode(val mode: Mode): OutputEvent()
 
 /*
  The Model, which holds any relevant state of the extension, in an immutable data class.
  */
-data class Model(val mode: BitwigMode,
+data class Model(val mode: Mode,
                  val shift: Boolean = false,
                  val ctrl: Boolean = false,
                  val currentBank: Int = 0,
@@ -87,8 +89,8 @@ data class Model(val mode: BitwigMode,
                  val recState: TrackState = initRec()) {
     fun toggleMode(): Model {
         return when (mode) {
-            BitwigMode.TRACKS -> this.copy(mode = BitwigMode.DEVICES)
-            BitwigMode.DEVICES -> this.copy(mode = BitwigMode.TRACKS)
+            Mode.TRACKS -> this.copy(mode = Mode.DEVICES)
+            Mode.DEVICES -> this.copy(mode = Mode.TRACKS)
         }
     }
     fun shiftOn() = this.copy(shift = true)
@@ -100,7 +102,7 @@ data class Model(val mode: BitwigMode,
     }
 }
 
-enum class BitwigMode {
+enum class Mode {
     TRACKS, DEVICES
 }
 
@@ -124,7 +126,7 @@ data class TrackState(val state: Array<Boolean> ) {
     }
 }
 
-fun initModel() = Model(BitwigMode.TRACKS)
+fun initModel() = Model(Mode.TRACKS)
 fun initMute() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
 fun initSolo() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
 fun initRec() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
@@ -156,7 +158,10 @@ private fun updateForControllerEvents(model: Model, inputEvent: ControllerInputE
             }
         ControllerInputs.F3 -> Pair(model, null) //TODO Assign to something
         ControllerInputs.F4 -> Pair(model, null) // TODO Assign to something
-        ControllerInputs.F5 -> inputEvent.isOnThen(model, Pair(model.toggleMode(), null))
+        ControllerInputs.F5 -> {
+            var newModel = model.toggleMode()
+            inputEvent.isOnThen(model, Pair(newModel, ToggleMode(newModel.mode)))
+        }
         ControllerInputs.PLAY -> inputEvent.isOnThen(model, Play)//TODO Check to see if playing
         ControllerInputs.REC -> inputEvent.isOnThen(model, Record)
         ControllerInputs.STOP -> inputEvent.isOnThen(model, Stop)

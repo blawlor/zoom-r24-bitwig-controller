@@ -6,12 +6,12 @@ import org.junit.jupiter.api.Test
 class ModelTest {
     @Test
     internal fun switchMode() {
-        val model = Model(BitwigMode.TRACKS)
+        val model = Model(Mode.TRACKS)
         val inputEvent = ControllerInputEvent(ControllerInputs.F5, ControllerInputActions.ON)
         val (newModel, _) = update(model, inputEvent)
-        assertEquals(BitwigMode.DEVICES, newModel.mode)
+        assertEquals(Mode.DEVICES, newModel.mode)
         val (newModel2, _) = update(newModel, inputEvent)
-        assertEquals(BitwigMode.TRACKS, newModel2.mode)
+        assertEquals(Mode.TRACKS, newModel2.mode)
     }
 
     @Test
