@@ -73,6 +73,10 @@ If you want to adapt this code for your own needs (or create a Pull Request on t
 see [this useful guide](https://github.com/outterback/bitwig-controller-tutorial) for tips on how to develop Java-based
 extensions. I recommend using IntelliJ as an IDE.
 
+## Acknowledgements
+Many of the ideas for this extension were based on reading the code of [Dirk Schiller](https://github.com/dschiller) 
+and by following the YouTube tutorials of [Juergen Mossgraber](https://www.youtube.com/playlist?list=PLqRWeSPiYQ66KBGONBenPv1O3luQCFQR2).
+
 ## Feedback welcome
 
 If you have suggestions for improvements either to the code or the functionality, please raise an issue. 
