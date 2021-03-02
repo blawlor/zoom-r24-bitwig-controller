@@ -39,6 +39,15 @@ The following diagram explains how the Zoom's faders, buttons and wheel can be u
 
 ![Zoom R24 User Guide](images/ZoomR24.png)
 
+The following image might be useful when printed out and placed on the
+R12/24 meters. 
+It maps the default colours that BWS uses to indicate controller elements 
+(e.g. faders) to tracks or device parameters, onto those R24 strips (1-8). 
+In this way, you have a visual guide to which fader corresponds to which 
+parameter in the BWS UI.
+
+![Zoom Track Colours](images/ZoomR24TrackColours.png)
+
 ## Important information
 * This extension requires API version 12 and upwards which corresponds to BWS 3.2.5 or later.
 * This code is licensed under Apache 2.0, which allows it to be used for free but also potentially to be used in 
