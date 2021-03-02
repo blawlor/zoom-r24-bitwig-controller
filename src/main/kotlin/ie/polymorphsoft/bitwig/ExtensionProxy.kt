@@ -22,6 +22,8 @@ class ExtensionProxy(val host: ControllerHost) {
     private var masterTrack: MasterTrack
     private var cursorTrack: CursorTrack
     private val userControls: UserControlBank
+    private val cursorDevice: Device
+    private val remoteControlsPage: CursorRemoteControlsPage
     init {
         host.println("Proxy initialized.")
         application = host.createApplication()
@@ -30,10 +32,11 @@ class ExtensionProxy(val host: ControllerHost) {
         currentTrackBank = host.createTrackBank(BANK_SIZE, 0, 0)
         masterTrack = host.createMasterTrack(0)
         cursorTrack = host.createCursorTrack("R24_CURSOR_TRACK", "Cursor Track", 0,0, true)
+        cursorDevice = cursorTrack.createCursorDevice("R24_CURSOR_DEVICE", "Cursor Device",0,CursorDeviceFollowMode.FOLLOW_SELECTION)
+        remoteControlsPage = cursorDevice.createCursorRemoteControlsPage(8)
 
-        // Current track bank used to enable the faders (vol and pan) and PMR buttons (mute,solo,arm) per track
         currentTrackBank.scrollPosition().markInterested()
-        currentTrackBank.scrollPosition().addValueObserver{ index -> doUpdate(BankChanged(index))}
+        currentTrackBank.scrollPosition().addValueObserver{ index -> doUpdate(TrackBankChanged(index))}
 
         for (trackNumber in 0..currentTrackBank.sizeOfBank - 1) {
             val track = currentTrackBank.getItemAt(trackNumber)
@@ -56,6 +59,16 @@ class ExtensionProxy(val host: ControllerHost) {
             //As tracks are created in their positions, this event is triggered
             track.position().addValueObserver{pos -> if (pos > -1) initializeNewTrack(track)}
         }
+
+        for (parameterIndex in 0..NO_OF_PARAMS-1) {
+            remoteControlsPage.getParameter(parameterIndex).markInterested()
+            remoteControlsPage.getParameter(parameterIndex).exists().markInterested()
+        }
+        remoteControlsPage.selectedPageIndex().addValueObserver{pageIndex -> doUpdate(DeviceBankChanged(pageIndex))}
+
+        cursorDevice.isEnabled().markInterested()
+        cursorDevice.isWindowOpen().markInterested()
+
         masterTrack.volume().markInterested()
         masterTrack.pan().markInterested()
         currentTrackBank.followCursorTrack(cursorTrack)
@@ -80,19 +93,33 @@ class ExtensionProxy(val host: ControllerHost) {
         if (track.exists().get()) doUpdate(event)
     }
 
+    @Synchronized
+    /*
+    This function is at the heart of the Elm approach:
+    1. Take in an event
+    2. Update the Model's state based on the event
+    3. Optionally send events to the underlying runtime (the brower in Elm, BWS in our case).
+
+    Everything can be seen as an incoming event, the resulting updated model, and any resulting outgoing events.
+     */
     private fun doUpdate(inputEvent: InputEvent) {
         host.println("Incoming event: $inputEvent")
-        val (updatedModel, bitwigEvent) = update(model, inputEvent)
+        val (updatedModel, outputEvent) = update(model, inputEvent)
         model = updatedModel
-        fireBitwigEvent(bitwigEvent) //Careful about loops here
         host.println(model.toString())
+        host.println("Outgoing event: $outputEvent")
+        handleOutputEvent(outputEvent) //Careful about loops here
     }
 
     /*
-    Converts the Bitwig events coming from the Model updates into Bitwig actions.
+    Converts the events coming from the Model updates into BWS actions.
     This is the equivalent of the Elm runtime.
+    The actions performed here can lead to new InputEvents via the various
+    value observers added above.
+    For now, all output events are assumed for BWS, but it's possible that
+    future requirements will result in events feeding back into the doUpdate function.
      */
-    private fun fireBitwigEvent(outputEvent: OutputEvent?) {
+    private fun handleOutputEvent(outputEvent: OutputEvent?) {
         outputEvent?.let{
             when (it) {
                 is Play -> transport.play()
@@ -100,7 +127,7 @@ class ExtensionProxy(val host: ControllerHost) {
                 is Stop -> transport.stop()
                 is FastForward -> transport.fastForward()
                 is Rewind -> transport.rewind()
-                is Fader -> {
+                is Volume -> {
                     val track = currentTrackBank.getItemAt(it.track)
                     if (track.exists().get()) {
                         track.volume().set(it.level, 128)
@@ -109,7 +136,7 @@ class ExtensionProxy(val host: ControllerHost) {
                         host.println("Track " + track + " does not exist")
                     }
                 }
-                is MasterFader -> masterTrack.volume().set(it.level, 128)
+                is MasterVolume -> masterTrack.volume().set(it.level, 128)
                 is Pan -> {
                     val track = currentTrackBank.getItemAt(it.track)
                     if (track.exists().get()) {
@@ -120,8 +147,10 @@ class ExtensionProxy(val host: ControllerHost) {
                     }
                 }
                 is MasterPan -> masterTrack.pan().set(it.level, 128)
-                BankDown -> currentTrackBank.scrollPageBackwards()
-                BankUp -> currentTrackBank.scrollPageForwards()
+                TrackBankDown -> currentTrackBank.scrollPageBackwards()
+                TrackBankUp -> currentTrackBank.scrollPageForwards()
+                DeviceBankDown -> remoteControlsPage.selectPreviousPage(false)
+                DeviceBankUp -> remoteControlsPage.selectNextPage(false)
                 JogClockwise -> transport.incPosition(1.0, true)
                 JogAntiClockwise -> transport.incPosition(-1.0, true)
                 ZoomIn -> application.zoomIn()
@@ -133,7 +162,51 @@ class ExtensionProxy(val host: ControllerHost) {
                 is Mute ->  currentTrackBank.getItemAt(it.track).mute().set(it.on)
                 is Solo ->  currentTrackBank.getItemAt(it.track).solo().set(it.on)
                 is Rec ->   currentTrackBank.getItemAt(it.track).arm().set(it.on)
+                is ToggleMode -> switchModeIndication(it.mode)
+                is Parameter ->{
+                    val parameter = remoteControlsPage.getParameter(it.param)
+                    if (parameter.exists().get()) {
+                        parameter.set(it.value, 128)
+                    } else {
+                        host.showPopupNotification("Parameter does not exist")
+                        host.println("Parameter " + it.param + " does not exist")
+                    }
+                }
+                is SetLayout -> {
+                    when (it.layout) {
+                        Layout.ARRANGE -> application.setPanelLayout(Application.PANEL_LAYOUT_ARRANGE)
+                        Layout.EDIT -> application.setPanelLayout(Application.PANEL_LAYOUT_EDIT)
+                        Layout.MIX -> application.setPanelLayout(Application.PANEL_LAYOUT_MIX)
+                    }
+                }
             }
+        }
+    }
+
+    private fun switchModeIndication(mode: Mode){
+        when (mode) {
+            Mode.TRACKS -> {
+                setDeviceIndication(false)
+                setTrackIndication(true)
+            }
+            Mode.DEVICES -> {
+                setDeviceIndication(true)
+                setTrackIndication(false)
+            }
+        }
+    }
+
+    private fun setTrackIndication(enable: Boolean){
+        for (trackNumber in 0..currentTrackBank.sizeOfBank - 1) {
+            val track = currentTrackBank.getItemAt(trackNumber)
+            track.volume().setIndication(enable)
+            track.pan().setIndication(enable)
+        }
+    }
+
+    private fun setDeviceIndication(enable: Boolean){
+        for(parameterIndex in 0..NO_OF_PARAMS-1) {
+            remoteControlsPage.getParameter(parameterIndex).setIndication(enable)
         }
     }
 

@@ -59,6 +59,9 @@
 							<goal>compile</goal>
 						</goals>
 						<configuration>
+							<args>
+								<arg>-Xuse-ir</arg>
+							</args>
 							<sourceDirs>
 								<sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
 								<sourceDir>${project.basedir}/src/main/java</sourceDir>
@@ -69,6 +72,9 @@
 						<id>test-compile</id>
 						<goals> <goal>test-compile</goal> </goals>
 						<configuration>
+							<args>
+								<arg>-Xuse-ir</arg>
+							</args>
 							<sourceDirs>
 								<sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
 								<sourceDir>${project.basedir}/src/test/java</sourceDir>
