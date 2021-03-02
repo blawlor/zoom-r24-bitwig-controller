@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 class ModelTest {
     @Test
     internal fun switchMode() {
-        val model = Model(Mode.TRACKS)
+        val model = initModel()
         val inputEvent = ControllerInputEvent(ControllerInputs.F5, ControllerInputActions.ON)
         val (newModel, _) = update(model, inputEvent)
         assertEquals(Mode.DEVICES, newModel.mode)
