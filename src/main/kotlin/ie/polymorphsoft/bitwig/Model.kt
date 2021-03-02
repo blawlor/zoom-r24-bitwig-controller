@@ -45,7 +45,8 @@ sealed class ToggleBWSInputEvent(track: Int, val on: Boolean):BWSTrackEvent(trac
 class MutedEvent(track: Int, on: Boolean): ToggleBWSInputEvent(track, on)
 class SoloedEvent(track: Int, on: Boolean): ToggleBWSInputEvent(track, on)
 class ArmedEvent(track: Int, on: Boolean): ToggleBWSInputEvent(track, on)
-class BankChanged(val bankStartIndex: Int): BWSInputEvent()
+class TrackBankChanged(val bankStartIndex: Int): BWSInputEvent()
+class DeviceBankChanged(val bankStartIndex: Int): BWSInputEvent()
 
 /*
 Output events (to controller and to BWS)
@@ -58,8 +59,10 @@ object Stop:OutputEvent()
 object Record:OutputEvent()
 object FastForward: OutputEvent()
 object Rewind: OutputEvent()
-object BankUp: OutputEvent()
-object BankDown: OutputEvent()
+object TrackBankUp: OutputEvent()
+object TrackBankDown: OutputEvent()
+object DeviceBankUp: OutputEvent()
+object DeviceBankDown: OutputEvent()
 object JogClockwise: OutputEvent()
 object JogAntiClockwise: OutputEvent();
 object ZoomIn: OutputEvent()
@@ -70,7 +73,11 @@ object ArrowLeft: OutputEvent()
 object ArrowRight: OutputEvent()
 class Volume(val track: Int, val level: Int): OutputEvent()
 class Pan(val track: Int, val level: Int): OutputEvent()
-class Parameter(val param: Int, val value: Int): OutputEvent()
+class Parameter(val param: Int, val value: Int): OutputEvent(){
+    override fun toString(): String {
+        return "Parameter(param=$param, value=$value)"
+    }
+}
 class MasterVolume(val level: Int): OutputEvent()
 class MasterPan(val level: Int): OutputEvent()
 class Mute(val track: Int, val on: Boolean = true): OutputEvent()
@@ -84,7 +91,8 @@ class ToggleMode(val mode: Mode): OutputEvent()
 data class Model(val mode: Mode,
                  val shift: Boolean = false,
                  val ctrl: Boolean = false,
-                 val currentBank: Int = 0,
+                 val currentTrackBank: Int = 0,
+                 val currentDeviceBank: Int = 0,
                  val muteState:  TrackState = initMute(),
                  val soloState: TrackState = initSolo(),
                  val recState: TrackState = initRec()) {
@@ -99,7 +107,7 @@ data class Model(val mode: Mode,
     fun ctrlOn() = this.copy(ctrl = true)
     fun ctrlOff() = this.copy(ctrl = false)
     override fun toString(): String {
-        return "Model(mode=$mode, shift=$shift, ctrl=$ctrl, currentBank=$currentBank, \nmuteState=$muteState, \nsoloState=$soloState, \nrecState=$recState\n)"
+        return "Model(mode=$mode, shift=$shift, ctrl=$ctrl, currentBank=$currentTrackBank, \nmuteState=$muteState, \nsoloState=$soloState, \nrecState=$recState\n)"
     }
 }
 
@@ -159,7 +167,7 @@ private fun updateForControllerEvents(model: Model, inputEvent: ControllerInputE
         ControllerInputs.F3 -> Pair(model, null) //TODO Assign to something
         ControllerInputs.F4 -> Pair(model, null) // TODO Assign to something
         ControllerInputs.F5 -> {
-            var newModel = model.toggleMode()
+            val newModel = model.toggleMode()
             inputEvent.isOnThen(model, Pair(newModel, ToggleMode(newModel.mode)))
         }
         ControllerInputs.PLAY -> inputEvent.isOnThen(model, Play)//TODO Check to see if playing
@@ -185,8 +193,16 @@ private fun updateForControllerEvents(model: Model, inputEvent: ControllerInputE
         ControllerInputs.LEFT -> updateForDirection(model, inputEvent, ArrowLeft, ArrowRight)
         ControllerInputs.RIGHT -> updateForDirection(model, inputEvent, ArrowRight, ArrowLeft)
 
-        ControllerInputs.BANK_DOWN -> inputEvent.isOnThen(model, Pair(model, if (model.currentBank>0) BankDown else null)) // Don't send the event if the bank was already 0
-        ControllerInputs.BANK_UP -> inputEvent.isOnThen(model, Pair(model, BankUp))
+        ControllerInputs.BANK_DOWN ->
+            when (model.mode) {
+                Mode.TRACKS -> inputEvent.isOnThen(model, Pair(model, TrackBankDown))
+                Mode.DEVICES -> inputEvent.isOnThen(model, Pair(model, DeviceBankDown))
+            }
+        ControllerInputs.BANK_UP ->
+            when (model.mode) {
+                Mode.TRACKS -> inputEvent.isOnThen(model, Pair(model, TrackBankUp))
+                Mode.DEVICES -> inputEvent.isOnThen(model, Pair(model, DeviceBankUp))
+            }
 
         ControllerInputs.PMR1 -> updateForPMR(model, 0, inputEvent.action)
         ControllerInputs.PMR2 -> updateForPMR(model, 1, inputEvent.action)
@@ -199,8 +215,6 @@ private fun updateForControllerEvents(model: Model, inputEvent: ControllerInputE
 
     }
 }
-
-
 
 private fun updateForDirection(model: Model, inputEvent: ControllerInputEvent, normal: OutputEvent, shift: OutputEvent) =
     if (inputEvent.action == ControllerInputActions.ON) {
@@ -226,15 +240,15 @@ private fun updateForPMR(model: Model, track: Int, action: ControllerInputAction
     }
 
 private fun toggleMuteState(model: Model, track: Int):Pair<Model, OutputEvent?> {
-    return Pair(model, Mute(track, !model.muteState.isOn(track.toAbsoluteTrackNumber(model.currentBank))))
+    return Pair(model, Mute(track, !model.muteState.isOn(track.toAbsoluteTrackNumber(model.currentTrackBank))))
 }
 
 private fun toggleSoloState(model: Model, track: Int):Pair<Model, OutputEvent?> {
-    return Pair(model, Solo(track, !model.soloState.isOn(track.toAbsoluteTrackNumber(model.currentBank))))
+    return Pair(model, Solo(track, !model.soloState.isOn(track.toAbsoluteTrackNumber(model.currentTrackBank))))
 }
 
 private fun toggleRecState(model: Model, track: Int):Pair<Model, OutputEvent?> {
-    return Pair(model, Rec(track, !model.recState.isOn(track.toAbsoluteTrackNumber(model.currentBank))))
+    return Pair(model, Rec(track, !model.recState.isOn(track.toAbsoluteTrackNumber(model.currentTrackBank))))
 }
 
 
@@ -256,10 +270,10 @@ private fun updateFader(model: Model, faderNumber: Int, action: ControllerInputA
         when(action) {
             ControllerInputActions.ON ->
                 when (model.mode){
-                    BitwigMode.TRACKS -> {
+                    Mode.TRACKS -> {
                         if (model.shift) Pair(model, Pan(faderNumber, value)) else Pair(model, Volume(faderNumber, value))
                     }
-                    BitwigMode.DEVICES -> Pair(model, Parameter(faderNumber, value))
+                    Mode.DEVICES -> Pair(model, Parameter(faderNumber, value))
             }
             ControllerInputActions.OFF -> Pair(model, null)
         }
@@ -287,7 +301,8 @@ private fun updateForBWSEvents(model: Model, inputEvent: BWSInputEvent): Pair<Mo
             val newRecState = if (inputEvent.on) model.recState.on(track) else model.recState.off(track)
             Pair(model.copy(recState = newRecState), null)
         }
-        is BankChanged -> Pair(model.copy(currentBank = inputEvent.bankStartIndex/8), null)
+        is TrackBankChanged -> Pair(model.copy(currentTrackBank = inputEvent.bankStartIndex / 8), null)
+        is DeviceBankChanged -> Pair(model.copy(currentDeviceBank = inputEvent.bankStartIndex / 8), null)
     }
 }
 

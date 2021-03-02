@@ -136,23 +136,24 @@ class ModelTest {
     @Test
     internal fun bank(){
         val model = initModel()
-        assertEquals(0, model.currentBank)
+        assertEquals(0, model.currentTrackBank)
         val (newModel0, bitwigEvent0) = update(model, ControllerInputEvent(ControllerInputs.BANK_DOWN, ControllerInputActions.ON))
-        assertNull(bitwigEvent0)
-        assertEquals(0, newModel0.currentBank)
+        assertNotNull(bitwigEvent0)
+        assertEquals(TrackBankDown, bitwigEvent0)
+        assertEquals(0, newModel0.currentTrackBank)
         val (newModel1, bitwigEvent1) = update(model, ControllerInputEvent(ControllerInputs.BANK_UP, ControllerInputActions.ON))
         assertNotNull(bitwigEvent1)
-        assertEquals(BankUp, bitwigEvent1)
-        assertEquals(0, newModel1.currentBank)//Model not to be updated. This is done by BSW events
+        assertEquals(TrackBankUp, bitwigEvent1)
+        assertEquals(0, newModel1.currentTrackBank)//Model not to be updated. This is done by BSW events
         val (newModel2, bitwigEvent2) = update(newModel1, ControllerInputEvent(ControllerInputs.BANK_UP, ControllerInputActions.ON))
         assertNotNull(bitwigEvent2)
-        assertEquals(BankUp, bitwigEvent2)
+        assertEquals(TrackBankUp, bitwigEvent2)
         val (newModel3, bitwigEvent3) = update(newModel2, ControllerInputEvent(ControllerInputs.BANK_UP, ControllerInputActions.ON))
         assertNotNull(bitwigEvent3)
-        assertEquals(BankUp, bitwigEvent3)
-        val (newModel4, bitwigEvent4) = update(newModel3.copy(currentBank = 1), ControllerInputEvent(ControllerInputs.BANK_DOWN, ControllerInputActions.ON))
+        assertEquals(TrackBankUp, bitwigEvent3)
+        val (newModel4, bitwigEvent4) = update(newModel3.copy(currentTrackBank = 1), ControllerInputEvent(ControllerInputs.BANK_DOWN, ControllerInputActions.ON))
         assertNotNull(bitwigEvent4)
-        assertEquals(BankDown, bitwigEvent4)
+        assertEquals(TrackBankDown, bitwigEvent4)
     }
 
     @Test

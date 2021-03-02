@@ -35,9 +35,8 @@ class ExtensionProxy(val host: ControllerHost) {
         cursorDevice = cursorTrack.createCursorDevice("R24_CURSOR_DEVICE", "Cursor Device",0,CursorDeviceFollowMode.FOLLOW_SELECTION)
         remoteControlBank = cursorDevice.createCursorRemoteControlsPage(8)
 
-        // Current track bank used to enable the faders (vol and pan) and PMR buttons (mute,solo,arm) per track
         currentTrackBank.scrollPosition().markInterested()
-        currentTrackBank.scrollPosition().addValueObserver{ index -> doUpdate(BankChanged(index))}
+        currentTrackBank.scrollPosition().addValueObserver{ index -> doUpdate(TrackBankChanged(index))}
 
         for (trackNumber in 0..currentTrackBank.sizeOfBank - 1) {
             val track = currentTrackBank.getItemAt(trackNumber)
@@ -61,10 +60,11 @@ class ExtensionProxy(val host: ControllerHost) {
             track.position().addValueObserver{pos -> if (pos > -1) initializeNewTrack(track)}
         }
 
-        for (parameterIndex in 1..NO_OF_PARAMS-1) {
+        for (parameterIndex in 0..NO_OF_PARAMS-1) {
             remoteControlBank.getParameter(parameterIndex).markInterested()
             remoteControlBank.getParameter(parameterIndex).exists().markInterested()
         }
+
         cursorDevice.isEnabled().markInterested()
         cursorDevice.isWindowOpen().markInterested()
 
@@ -95,9 +95,10 @@ class ExtensionProxy(val host: ControllerHost) {
     @Synchronized
     private fun doUpdate(inputEvent: InputEvent) {
         host.println("Incoming event: $inputEvent")
-        val (updatedModel, bitwigEvent) = update(model, inputEvent)
+        val (updatedModel, outputEvent) = update(model, inputEvent)
         model = updatedModel
-        fireBitwigEvent(bitwigEvent) //Careful about loops here
+        host.println("Outgoing event: $outputEvent")
+        fireBitwigEvent(outputEvent) //Careful about loops here
         host.println(model.toString())
     }
 
@@ -133,8 +134,8 @@ class ExtensionProxy(val host: ControllerHost) {
                     }
                 }
                 is MasterPan -> masterTrack.pan().set(it.level, 128)
-                BankDown -> currentTrackBank.scrollPageBackwards()
-                BankUp -> currentTrackBank.scrollPageForwards()
+                TrackBankDown -> currentTrackBank.scrollPageBackwards()
+                TrackBankUp -> currentTrackBank.scrollPageForwards()
                 JogClockwise -> transport.incPosition(1.0, true)
                 JogAntiClockwise -> transport.incPosition(-1.0, true)
                 ZoomIn -> application.zoomIn()
