@@ -107,7 +107,7 @@ data class Model(val mode: Mode,
     fun ctrlOn() = this.copy(ctrl = true)
     fun ctrlOff() = this.copy(ctrl = false)
     override fun toString(): String {
-        return "Model(mode=$mode, shift=$shift, ctrl=$ctrl, currentBank=$currentTrackBank, \nmuteState=$muteState, \nsoloState=$soloState, \nrecState=$recState\n)"
+        return "Model(mode=$mode, shift=$shift, ctrl=$ctrl, \ncurrentTrackBank=$currentTrackBank, currentDeviceBank=$currentDeviceBank, \nmuteState=$muteState, \nsoloState=$soloState, \nrecState=$recState\n)"
     }
 }
 

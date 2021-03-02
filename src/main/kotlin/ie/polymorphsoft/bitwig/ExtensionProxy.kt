@@ -64,6 +64,7 @@ class ExtensionProxy(val host: ControllerHost) {
             remoteControlsPage.getParameter(parameterIndex).markInterested()
             remoteControlsPage.getParameter(parameterIndex).exists().markInterested()
         }
+        remoteControlsPage.selectedPageIndex().addValueObserver{pageIndex -> doUpdate(DeviceBankChanged(pageIndex))}
 
         cursorDevice.isEnabled().markInterested()
         cursorDevice.isWindowOpen().markInterested()
@@ -93,20 +94,32 @@ class ExtensionProxy(val host: ControllerHost) {
     }
 
     @Synchronized
+    /*
+    This function is at the heart of the Elm approach:
+    1. Take in an event
+    2. Update the Model's state based on the event
+    3. Optionally send events to the underlying runtime (the brower in Elm, BWS in our case).
+
+    Everything can be seen as an incoming event, the resulting updated model, and any resulting outgoing events.
+     */
     private fun doUpdate(inputEvent: InputEvent) {
         host.println("Incoming event: $inputEvent")
         val (updatedModel, outputEvent) = update(model, inputEvent)
         model = updatedModel
-        host.println("Outgoing event: $outputEvent")
-        fireBitwigEvent(outputEvent) //Careful about loops here
         host.println(model.toString())
+        host.println("Outgoing event: $outputEvent")
+        handleOutputEvent(outputEvent) //Careful about loops here
     }
 
     /*
-    Converts the Bitwig events coming from the Model updates into Bitwig actions.
+    Converts the events coming from the Model updates into BWS actions.
     This is the equivalent of the Elm runtime.
+    The actions performed here can lead to new InputEvents via the various
+    value observers added above.
+    For now, all output events are assumed for BWS, but it's possible that
+    future requirements will result in events feeding back into the doUpdate function.
      */
-    private fun fireBitwigEvent(outputEvent: OutputEvent?) {
+    private fun handleOutputEvent(outputEvent: OutputEvent?) {
         outputEvent?.let{
             when (it) {
                 is Play -> transport.play()
