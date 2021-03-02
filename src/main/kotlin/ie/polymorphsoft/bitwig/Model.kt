@@ -84,6 +84,7 @@ class Mute(val track: Int, val on: Boolean = true): OutputEvent()
 class Solo(val track: Int, val on: Boolean = true): OutputEvent()
 class Rec(val track: Int, val on: Boolean = true): OutputEvent()
 class ToggleMode(val mode: Mode): OutputEvent()
+class SetLayout(val layout: Layout): OutputEvent()
 
 /*
  The Model, which holds any relevant state of the extension, in an immutable data class.
@@ -113,6 +114,12 @@ data class Model(val mode: Mode,
 
 enum class Mode {
     TRACKS, DEVICES
+}
+
+enum class Layout {
+    ARRANGE,
+    EDIT,
+    MIX
 }
 
 data class TrackState(val state: Array<Boolean> ) {
@@ -164,7 +171,16 @@ private fun updateForControllerEvents(model: Model, inputEvent: ControllerInputE
                 ControllerInputActions.ON -> Pair(model.ctrlOn(), null)
                 ControllerInputActions.OFF -> Pair(model.ctrlOff(), null)
             }
-        ControllerInputs.F3 -> Pair(model, null) //TODO Assign to something
+        ControllerInputs.F3 ->
+            if (!model.shift && !model.ctrl) {
+                Pair(model, SetLayout(Layout.ARRANGE))
+            } else if (model.shift && !model.ctrl) {
+                Pair(model, SetLayout(Layout.EDIT))
+            } else if (!model.shift && model.ctrl) {
+                Pair(model, SetLayout(Layout.MIX))
+            } else {
+                Pair(model, null)
+            }
         ControllerInputs.F4 -> Pair(model, null) // TODO Assign to something
         ControllerInputs.F5 -> {
             val newModel = model.toggleMode()

@@ -172,6 +172,13 @@ class ExtensionProxy(val host: ControllerHost) {
                         host.println("Parameter " + it.param + " does not exist")
                     }
                 }
+                is SetLayout -> {
+                    when (it.layout) {
+                        Layout.ARRANGE -> application.setPanelLayout(Application.PANEL_LAYOUT_ARRANGE)
+                        Layout.EDIT -> application.setPanelLayout(Application.PANEL_LAYOUT_EDIT)
+                        Layout.MIX -> application.setPanelLayout(Application.PANEL_LAYOUT_MIX)
+                    }
+                }
             }
         }
     }
