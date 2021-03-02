@@ -71,7 +71,8 @@ Any input event can result in a change to the model, or an output event being em
 The way in which input events are interpreted depends on the current state.  
 Emitted events are converted into calls to the BWS API. 
 
-A good example of state is the 'shift' state. For as long as the F1 button is held down,
+A good example of state is the 'shift' state. 
+For as long as the F1 button is held down, the 'shift' property of the internal state will be true.  
 
 Only one event can be processed at a time. It is processed to completion before the next event is considered.
 
