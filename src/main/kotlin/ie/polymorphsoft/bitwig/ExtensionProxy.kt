@@ -23,7 +23,7 @@ class ExtensionProxy(val host: ControllerHost) {
     private var cursorTrack: CursorTrack
     private val userControls: UserControlBank
     private val cursorDevice: Device
-    private val remoteControlBank: RemoteControlsPage
+    private val remoteControlsPage: CursorRemoteControlsPage
     init {
         host.println("Proxy initialized.")
         application = host.createApplication()
@@ -33,7 +33,7 @@ class ExtensionProxy(val host: ControllerHost) {
         masterTrack = host.createMasterTrack(0)
         cursorTrack = host.createCursorTrack("R24_CURSOR_TRACK", "Cursor Track", 0,0, true)
         cursorDevice = cursorTrack.createCursorDevice("R24_CURSOR_DEVICE", "Cursor Device",0,CursorDeviceFollowMode.FOLLOW_SELECTION)
-        remoteControlBank = cursorDevice.createCursorRemoteControlsPage(8)
+        remoteControlsPage = cursorDevice.createCursorRemoteControlsPage(8)
 
         currentTrackBank.scrollPosition().markInterested()
         currentTrackBank.scrollPosition().addValueObserver{ index -> doUpdate(TrackBankChanged(index))}
@@ -61,8 +61,8 @@ class ExtensionProxy(val host: ControllerHost) {
         }
 
         for (parameterIndex in 0..NO_OF_PARAMS-1) {
-            remoteControlBank.getParameter(parameterIndex).markInterested()
-            remoteControlBank.getParameter(parameterIndex).exists().markInterested()
+            remoteControlsPage.getParameter(parameterIndex).markInterested()
+            remoteControlsPage.getParameter(parameterIndex).exists().markInterested()
         }
 
         cursorDevice.isEnabled().markInterested()
@@ -136,6 +136,8 @@ class ExtensionProxy(val host: ControllerHost) {
                 is MasterPan -> masterTrack.pan().set(it.level, 128)
                 TrackBankDown -> currentTrackBank.scrollPageBackwards()
                 TrackBankUp -> currentTrackBank.scrollPageForwards()
+                DeviceBankDown -> remoteControlsPage.selectPreviousPage(false)
+                DeviceBankUp -> remoteControlsPage.selectNextPage(false)
                 JogClockwise -> transport.incPosition(1.0, true)
                 JogAntiClockwise -> transport.incPosition(-1.0, true)
                 ZoomIn -> application.zoomIn()
@@ -149,7 +151,7 @@ class ExtensionProxy(val host: ControllerHost) {
                 is Rec ->   currentTrackBank.getItemAt(it.track).arm().set(it.on)
                 is ToggleMode -> switchModeIndication(it.mode)
                 is Parameter ->{
-                    val parameter = remoteControlBank.getParameter(it.param)
+                    val parameter = remoteControlsPage.getParameter(it.param)
                     if (parameter.exists().get()) {
                         parameter.set(it.value, 128)
                     } else {
@@ -184,7 +186,7 @@ class ExtensionProxy(val host: ControllerHost) {
 
     private fun setDeviceIndication(enable: Boolean){
         for(parameterIndex in 0..NO_OF_PARAMS-1) {
-            remoteControlBank.getParameter(parameterIndex).setIndication(enable)
+            remoteControlsPage.getParameter(parameterIndex).setIndication(enable)
         }
     }
 
