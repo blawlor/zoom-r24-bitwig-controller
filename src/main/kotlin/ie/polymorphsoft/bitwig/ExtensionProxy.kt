@@ -4,6 +4,7 @@ import com.bitwig.extension.api.util.midi.ShortMidiMessage
 import com.bitwig.extension.callback.ShortMidiMessageReceivedCallback
 import com.bitwig.extension.controller.api.*
 import ie.polymorphsoft.bitwig.midi.inputEvent
+import java.lang.Exception
 
 /*
 A class in Kotlin that allows us to continue using a Java class as the extension, but most of the real work is done here.
@@ -35,6 +36,7 @@ class ExtensionProxy(val host: ControllerHost) {
         cursorDevice = cursorTrack.createCursorDevice("R24_CURSOR_DEVICE", "Cursor Device",0,CursorDeviceFollowMode.FOLLOW_SELECTION)
         remoteControlsPage = cursorDevice.createCursorRemoteControlsPage(8)
 
+        application.panelLayout().addValueObserver{layout -> doUpdate(LayoutChanged(layout.toModelLayout()))}
         currentTrackBank.scrollPosition().markInterested()
         currentTrackBank.scrollPosition().addValueObserver{ index -> doUpdate(TrackBankChanged(index))}
 
@@ -172,16 +174,25 @@ class ExtensionProxy(val host: ControllerHost) {
                         host.println("Parameter " + it.param + " does not exist")
                     }
                 }
-                is SetLayout -> {
-                    when (it.layout) {
-                        Layout.ARRANGE -> application.setPanelLayout(Application.PANEL_LAYOUT_ARRANGE)
-                        Layout.EDIT -> application.setPanelLayout(Application.PANEL_LAYOUT_EDIT)
-                        Layout.MIX -> application.setPanelLayout(Application.PANEL_LAYOUT_MIX)
-                    }
-                }
+                is SetLayout -> application.setPanelLayout(it.layout.toBWSLayout())
             }
         }
     }
+
+    private fun String.toModelLayout():Layout =
+        when (this) {
+            Application.PANEL_LAYOUT_ARRANGE -> Layout.ARRANGE
+            Application.PANEL_LAYOUT_EDIT -> Layout.EDIT
+            Application.PANEL_LAYOUT_MIX -> Layout.MIX
+            else -> Layout.ARRANGE // Default to Arrange if the string is not recognized
+        }
+
+    private fun Layout.toBWSLayout():String =
+        when (this) {
+            Layout.ARRANGE -> Application.PANEL_LAYOUT_ARRANGE
+            Layout.EDIT -> Application.PANEL_LAYOUT_EDIT
+            Layout.MIX ->Application.PANEL_LAYOUT_MIX
+        }
 
     private fun switchModeIndication(mode: Mode){
         when (mode) {

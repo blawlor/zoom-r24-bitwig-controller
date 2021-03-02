@@ -47,6 +47,7 @@ class SoloedEvent(track: Int, on: Boolean): ToggleBWSInputEvent(track, on)
 class ArmedEvent(track: Int, on: Boolean): ToggleBWSInputEvent(track, on)
 class TrackBankChanged(val bankStartIndex: Int): BWSInputEvent()
 class DeviceBankChanged(val bankStartIndex: Int): BWSInputEvent()
+class LayoutChanged(val layout: Layout): BWSInputEvent()
 
 /*
 Output events (to controller and to BWS)
@@ -90,6 +91,7 @@ class SetLayout(val layout: Layout): OutputEvent()
  The Model, which holds any relevant state of the extension, in an immutable data class.
  */
 data class Model(val mode: Mode,
+                 val layout: Layout,
                  val shift: Boolean = false,
                  val ctrl: Boolean = false,
                  val currentTrackBank: Int = 0,
@@ -108,7 +110,7 @@ data class Model(val mode: Mode,
     fun ctrlOn() = this.copy(ctrl = true)
     fun ctrlOff() = this.copy(ctrl = false)
     override fun toString(): String {
-        return "Model(mode=$mode, shift=$shift, ctrl=$ctrl, \ncurrentTrackBank=$currentTrackBank, currentDeviceBank=$currentDeviceBank, \nmuteState=$muteState, \nsoloState=$soloState, \nrecState=$recState\n)"
+        return "Model(mode=$mode, layout=$layout,\nshift=$shift, ctrl=$ctrl, \ncurrentTrackBank=$currentTrackBank, currentDeviceBank=$currentDeviceBank, \nmuteState=$muteState, \nsoloState=$soloState, \nrecState=$recState\n)"
     }
 }
 
@@ -142,7 +144,7 @@ data class TrackState(val state: Array<Boolean> ) {
     }
 }
 
-fun initModel() = Model(Mode.TRACKS)
+fun initModel() = Model(Mode.TRACKS, Layout.ARRANGE)
 fun initMute() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
 fun initSolo() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
 fun initRec() = TrackState(Array(BANK_SIZE* NO_OF_BANKS){false})
@@ -171,16 +173,8 @@ private fun updateForControllerEvents(model: Model, inputEvent: ControllerInputE
                 ControllerInputActions.ON -> Pair(model.ctrlOn(), null)
                 ControllerInputActions.OFF -> Pair(model.ctrlOff(), null)
             }
-        ControllerInputs.F3 ->
-            if (!model.shift && !model.ctrl) {
-                Pair(model, SetLayout(Layout.ARRANGE))
-            } else if (model.shift && !model.ctrl) {
-                Pair(model, SetLayout(Layout.EDIT))
-            } else if (!model.shift && model.ctrl) {
-                Pair(model, SetLayout(Layout.MIX))
-            } else {
-                Pair(model, null)
-            }
+        ControllerInputs.F3 -> inputEvent.isOnThen(model, toggleLayout(model))
+
         ControllerInputs.F4 -> Pair(model, null) // TODO Assign to something
         ControllerInputs.F5 -> {
             val newModel = model.toggleMode()
@@ -267,6 +261,12 @@ private fun toggleRecState(model: Model, track: Int):Pair<Model, OutputEvent?> {
     return Pair(model, Rec(track, !model.recState.isOn(track.toAbsoluteTrackNumber(model.currentTrackBank))))
 }
 
+private fun toggleLayout(model: Model):Pair<Model, OutputEvent?> =
+    when (model.layout){
+        Layout.EDIT -> Pair(model, SetLayout(Layout.ARRANGE))
+        Layout.ARRANGE -> Pair(model, SetLayout(Layout.MIX))
+        Layout.MIX ->  Pair(model, SetLayout(Layout.EDIT))
+    }
 
 private fun updateJog(model: Model, action: ControllerInputActions): Pair<Model, OutputEvent?> {
     return if (model.shift){
@@ -319,6 +319,7 @@ private fun updateForBWSEvents(model: Model, inputEvent: BWSInputEvent): Pair<Mo
         }
         is TrackBankChanged -> Pair(model.copy(currentTrackBank = inputEvent.bankStartIndex / 8), null)
         is DeviceBankChanged -> Pair(model.copy(currentDeviceBank = inputEvent.bankStartIndex / 8), null)
+        is LayoutChanged -> Pair(model.copy(layout = inputEvent.layout), null)
     }
 }
 
