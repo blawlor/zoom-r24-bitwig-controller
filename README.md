@@ -7,7 +7,7 @@ This code allows you to use your Zoom R12/24 (R24) as a control surface for Bitw
 
 ## How do I install it?
 
-You can either just download the latest version by selecting it from the list of releases to the right of this page,
+You can just download the latest version by selecting it from the list of releases to the right of this page,
 downloading the _.bwextension_ file, and copying it into your Bitwig Studio _Extensions_ directory. 
 
 You can also build this extension locally yourself (if you want to play around with the code or make some improvements or personalizations).
