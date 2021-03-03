@@ -31,3 +31,48 @@ jobs:
         with:
           name: extension-file
           path: target/ZoomR24Controller.bwextension
+
+---
+name: "release"
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: "Release"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Runs the Super-Linter action
+      - name: Set up jdk 12
+        uses: actions/setup-java@v1.4.3
+        with:
+          java-version: '12'
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Build with maven wrapper
+        run: ./mvnw clean install
+      - name: Save artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: extension-file
+          path: target/ZoomR24Controller.bwextension
+
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            LICENSE.txt
+            target/ZoomR24Controller.bwextension
